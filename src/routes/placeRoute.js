@@ -1,13 +1,28 @@
 const express = require("express");
 const axios = require("axios");
+const multer = require("multer");
+const sharp = require("sharp");
+const fs = require("fs");
 
 require("dotenv").config();
+
+const uploadMiddleware = require("../middlewares/uploadMiddleware");
 
 const TAT_KEY = process.env.TAT_KEY;
 
 const router = express.Router();
 
-router.use(express.json());
+const upload = multer({
+  limits: {
+    fileSize: 2000000,
+  },
+  fileFilter(req, file, cb) {
+    if (!file.originalname.match(/\.(jpg|jpeg|png)$/)) {
+      return cb(new Error("Please upload a valid image file"));
+    }
+    cb(undefined, true);
+  },
+});
 
 router.get("/information", async (req, res) => {
   try {
@@ -51,6 +66,30 @@ router.get("/information", async (req, res) => {
     console.log(err.response.statusText);
     res.json("fail");
   }
+});
+
+// single img
+router.post("/image", upload.single("upload"), async (req, res) => {
+  try {
+    const newPath = __dirname.split("/");
+    newPath.pop();
+
+    await sharp(req.file.buffer)
+      .resize({ width: 250, height: 250 })
+      .png()
+      .toFile(newPath.join("/") + `/images/${req.file.originalname}`);
+    res.status(201).send("Image uploaded succesfully");
+  } catch (error) {
+    console.log(error);
+    res.status(400).send(error);
+  }
+});
+
+// multiple img
+router.post("/upload", uploadMiddleware, (req, res) => {
+  const files = req.files;
+
+  res.json("done");
 });
 
 module.exports = router;

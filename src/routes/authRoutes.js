@@ -10,8 +10,6 @@ const SECRET = process.env.SECRET_KEY;
 
 const router = express.Router();
 
-router.use(express.json());
-
 // ====================== router ======================
 
 router.post("/login", async (req, res) => {
