@@ -1,10 +1,11 @@
 require("dotenv").config();
+
+const bcrypt = require("bcrypt");
+const jwt = require("jwt-simple");
 const express = require("express");
 const { v4: uuidv4 } = require("uuid");
-const bcrypt = require("bcrypt");
 const User = require("../models/User.js");
 const { hashPassword, comparePasswords } = require("../utils/function.js");
-const jwt = require("jwt-simple");
 
 const SECRET = process.env.SECRET_KEY;
 

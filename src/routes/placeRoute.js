@@ -1,11 +1,9 @@
-const express = require("express");
-const axios = require("axios");
-const multer = require("multer");
-const sharp = require("sharp");
-const fs = require("fs");
-
 require("dotenv").config();
 
+const sharp = require("sharp");
+const axios = require("axios");
+const multer = require("multer");
+const express = require("express");
 const uploadMiddleware = require("../middlewares/uploadMiddleware");
 
 const TAT_KEY = process.env.TAT_KEY;
