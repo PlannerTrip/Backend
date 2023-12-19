@@ -1,5 +1,6 @@
 require("dotenv").config();
 
+const path = require("path");
 const sharp = require("sharp");
 const axios = require("axios");
 const multer = require("multer");
@@ -22,8 +23,15 @@ const upload = multer({
   },
 });
 
+// router.get("/information", (req, res) => {
+//   const files = req.body;
+//   console.log(files);
+//   return res.json("done");
+// });
+
 router.get("/information", async (req, res) => {
   try {
+    console.log(req.body);
     const id = req.body.id;
 
     // 5 type SHOP RESTAURANT ACCOMMODATION ATTRACTION OTHER
@@ -56,10 +64,10 @@ router.get("/information", async (req, res) => {
     } else if (type === "ATTRACTION") {
     } else if (type === "OTHER") {
     } else {
-      return    res.status(400).json({ error: "Invalid type" });
+      return res.status(400).json({ error: "Invalid type" });
     }
 
-    return  res.json("done");
+    return res.json("done");
   } catch (err) {
     console.log(err.response.statusText);
     return res.json("fail");
@@ -89,5 +97,41 @@ router.post("/upload", uploadMiddleware, (req, res) => {
 
   return res.json("done");
 });
+
+//  fireBase
+const uploadFirebase = multer({ storage: multer.memoryStorage() });
+
+const { initializeApp, cert } = require("firebase-admin/app");
+const { getStorage, getDownloadURL } = require("firebase-admin/storage");
+
+const serviceAccount = require("../../serviceAccountKey.json");
+
+initializeApp({
+  credential: cert(serviceAccount),
+  storageBucket: process.env.BUCKET_URL,
+});
+
+const bucket = getStorage().bucket();
+
+router.post(
+  "/uploadFirebase",
+  uploadFirebase.single("file"),
+  async (req, res) => {
+    try {
+      const fileName = Date.now() + path.extname(req.file.originalname);
+      const file = bucket.file(fileName);
+      console.log(bucket.name);
+      await file.createWriteStream().end(req.file.buffer);
+
+      const downloadURL = `https://firebasestorage.googleapis.com/v0/b/${
+        bucket.name
+      }/o/${fileName}?alt=media&token=${Date.now()}`;
+      return res.json({ url: downloadURL });
+      // return res.json("done");
+    } catch (err) {
+      return res.status(404).json({ error: err });
+    }
+  }
+);
 
 module.exports = router;
