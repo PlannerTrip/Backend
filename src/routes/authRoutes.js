@@ -62,7 +62,7 @@ router.post("/register", async (req, res, next) => {
 });
 
 router.get("/authCheck", (req, res) => {
-  res.json("success");
+  return res.json("success");
 });
 
 module.exports = router;

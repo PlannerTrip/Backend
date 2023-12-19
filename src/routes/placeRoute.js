@@ -56,13 +56,13 @@ router.get("/information", async (req, res) => {
     } else if (type === "ATTRACTION") {
     } else if (type === "OTHER") {
     } else {
-      res.status(400).json({ error: "Invalid type" });
+      return    res.status(400).json({ error: "Invalid type" });
     }
 
-    res.json("done");
+    return  res.json("done");
   } catch (err) {
     console.log(err.response.statusText);
-    res.json("fail");
+    return res.json("fail");
   }
 });
 
@@ -76,10 +76,10 @@ router.post("/image", upload.single("upload"), async (req, res) => {
       .resize({ width: 250, height: 250 })
       .png()
       .toFile(newPath.join("/") + `/images/${req.file.originalname}`);
-    res.status(201).send("Image uploaded succesfully");
+    return res.status(201).send("Image uploaded succesfully");
   } catch (error) {
     console.log(error);
-    res.status(400).send(error);
+    return res.status(400).send(error);
   }
 });
 
@@ -87,7 +87,7 @@ router.post("/image", upload.single("upload"), async (req, res) => {
 router.post("/upload", uploadMiddleware, (req, res) => {
   const files = req.files;
 
-  res.json("done");
+  return res.json("done");
 });
 
 module.exports = router;
