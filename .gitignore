@@ -10,4 +10,4 @@ npm-debug.log
 
 .DS_Store
 
-.serviceAccountKey.json
+firebaseServiceAccountKey.json

@@ -23,12 +23,6 @@ const upload = multer({
   },
 });
 
-// router.get("/information", (req, res) => {
-//   const files = req.body;
-//   console.log(files);
-//   return res.json("done");
-// });
-
 router.get("/information", async (req, res) => {
   try {
     console.log(req.body);
@@ -98,13 +92,13 @@ router.post("/upload", uploadMiddleware, (req, res) => {
   return res.json("done");
 });
 
-//  fireBase
+//  ================== fireBase ==================
 const uploadFirebase = multer({ storage: multer.memoryStorage() });
 
 const { initializeApp, cert } = require("firebase-admin/app");
 const { getStorage, getDownloadURL } = require("firebase-admin/storage");
 
-const serviceAccount = require("../../serviceAccountKey.json");
+const serviceAccount = require("../../firebaseServiceAccountKey.json");
 
 initializeApp({
   credential: cert(serviceAccount),
@@ -120,12 +114,13 @@ router.post(
     try {
       const fileName = Date.now() + path.extname(req.file.originalname);
       const file = bucket.file(fileName);
-      console.log(bucket.name);
       await file.createWriteStream().end(req.file.buffer);
 
       const downloadURL = `https://firebasestorage.googleapis.com/v0/b/${
         bucket.name
       }/o/${fileName}?alt=media&token=${Date.now()}`;
+
+      // const downloadURL = await getDownloadURL(file)
       return res.json({ url: downloadURL });
       // return res.json("done");
     } catch (err) {
@@ -133,5 +128,12 @@ router.post(
     }
   }
 );
+
+router.delete("/delete", async (req, res) => {
+  const filesName = req.body.filename;
+  const file = bucket.file(filesName);
+  await file.delete();
+  return res.json("done");
+});
 
 module.exports = router;
