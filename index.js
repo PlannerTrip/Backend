@@ -14,31 +14,6 @@ const server = http.createServer(app);
 const { Server } = require("socket.io");
 server.listen(port, () => console.log("listening on *:3000"));
 
-// ==================== socket ====================
-
-const io = new Server(server, {
-  cors: {
-    origin: ["*"],
-  },
-
-  maxHttpBufferSize: 4e6,
-});
-io.on("connection", (socket) => {
-  console.log("a user connected");
-
-  // Log any error during connection
-  socket.on("connect_error", (err) => {
-    console.log("Connection error:", err.message);
-  });
-  socket.on("message", (data) => {
-    console.log(data);
-  });
-  // Handle disconnection
-  socket.on("disconnect", () => {
-    console.log("user disconnected");
-  });
-});
-
 const MONGODB_URI = process.env.MONGODB_URI;
 
 const publicPaths = ["/login", "/register"];
@@ -72,3 +47,28 @@ const placeRoute = require("./src/routes/placeRoute");
 
 app.use("/", authRoutes);
 app.use("/place", placeRoute);
+
+// ==================== socket ====================
+
+// const io = new Server(server, {
+//   cors: {
+//     origin: ["*"],
+//   },
+
+//   maxHttpBufferSize: 4e6,
+// });
+// io.on("connection", (socket) => {
+//   console.log("a user connected");
+
+//   // Log any error during connection
+//   socket.on("connect_error", (err) => {
+//     console.log("Connection error:", err.message);
+//   });
+//   socket.on("message", (data) => {
+//     console.log(data);
+//   });
+//   // Handle disconnection
+//   socket.on("disconnect", () => {
+//     console.log("user disconnected");
+//   });
+// });

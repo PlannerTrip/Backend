@@ -7,11 +7,98 @@ const multer = require("multer");
 const express = require("express");
 const uploadMiddleware = require("../middlewares/uploadMiddleware");
 
-
+const Place = require("../models/Place.js");
 
 const TAT_KEY = process.env.TAT_KEY;
 
 const router = express.Router();
+
+// get place information from id and type
+router.get("/information", async (req, res) => {
+  try {
+    console.log(req.body);
+    const id = req.body.id;
+
+    // 5 type SHOP RESTAURANT ACCOMMODATION ATTRACTION OTHER
+    const type = req.body.type;
+
+    // check parameter
+    if (!id || !type) {
+      res.status(400).json({ error: "Missing or invalid parameters" });
+    }
+
+    const header = {
+      "Accept-Language": "th",
+      "Content-Type": "text/json",
+      Authorization: TAT_KEY,
+    };
+
+    let place = await Place.findOne({ placeId: req.body.id });
+
+    if (!place) {
+      const noWeekDay = ["ACCOMMODATION", "OTHER"];
+      const listOfType = [
+        "ATTRACTION",
+        "SHOP",
+        "ACCOMMODATION",
+        "RESTAURANT",
+        "OTHER",
+      ];
+      // check type
+      if (!listOfType.includes(type)) {
+        return res.status(400).json({ error: "Invalid type" });
+      }
+
+      // call api to TAT
+      const response = await axios(
+        `https://tatapi.tourismthailand.org/tatapi/v5/${type.toLowerCase()}/${id}`,
+        {
+          headers: header,
+        }
+      );
+
+      const tag = response.data.result.place_information[
+        `${type.toLowerCase()}_types`
+      ]
+        ? response.data.result.place_information[
+            `${type.toLowerCase()}_types`
+          ].map((item) => item.description)
+        : null;
+
+      const responseData = response.data.result;
+      place = {
+        placeId: responseData.place_id,
+        placeName: responseData.place_name,
+        type: type,
+        coverImg: responseData.web_picture_urls,
+        introduction: responseData.place_information.introduction,
+        tag: tag,
+        latitude: responseData.latitude,
+        longitude: responseData.longitude,
+        contact: {
+          phone: responseData.contact.phones
+            ? responseData.contact.phones[0]
+            : null,
+          url: responseData.contact.urls ? responseData.contact.urls[0] : null,
+        },
+        location: {
+          address: responseData.location.address,
+          district: responseData.location.district,
+          province: responseData.location.province,
+        },
+        weekDay: noWeekDay.includes(type)
+          ? null
+          : responseData.opening_hours.weekday_text,
+      };
+      const createNewPlace = await Place.create(place);
+    }
+
+    return res.json(place);
+  } catch (err) {
+    console.log(err);
+    return res.json(err);
+  }
+});
 
 const upload = multer({
   limits: {
@@ -23,51 +110,6 @@ const upload = multer({
     }
     cb(undefined, true);
   },
-});
-
-router.get("/information", async (req, res) => {
-  try {
-    console.log(req.body);
-    const id = req.body.id;
-
-    // 5 type SHOP RESTAURANT ACCOMMODATION ATTRACTION OTHER
-    const type = req.body.type;
-
-    if (!id || !type) {
-      res.status(400).json({ error: "Missing or invalid parameters" });
-    }
-
-    const header = {
-      "Accept-Language": "th",
-      "Content-Type": "text/json",
-      Authorization: TAT_KEY,
-    };
-
-    // check type
-    // check id in database
-    // if didn't have call api and save to database then return response
-    // if have return response
-
-    if (type === "RESTAURANT") {
-      const response = await axios(
-        `https://tatapi.tourismthailand.org/tatapi/v5/attraction/${id}`,
-        {
-          headers: header,
-        }
-      );
-    } else if (type === "SHOP") {
-    } else if (type === "ACCOMMODATION") {
-    } else if (type === "ATTRACTION") {
-    } else if (type === "OTHER") {
-    } else {
-      return res.status(400).json({ error: "Invalid type" });
-    }
-
-    return res.json("done");
-  } catch (err) {
-    console.log(err.response.statusText);
-    return res.json("fail");
-  }
 });
 
 // single img
