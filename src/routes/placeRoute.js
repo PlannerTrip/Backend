@@ -2,24 +2,26 @@ require("dotenv").config();
 
 const axios = require("axios");
 const express = require("express");
+const date = require("date-and-time");
 
 const Place = require("../models/Place.js");
 const CheckIn = require("../models/CheckIn.js");
 
 const TAT_KEY = process.env.TAT_KEY;
+const TMD_KEY = process.env.TMD_KEY;
 
 const router = express.Router();
 
 // get place information from id and type
 router.get("/information", async (req, res) => {
   try {
-    const id = req.body.id;
-
+    const placeId = req.body.placeId;
     // 5 type SHOP RESTAURANT ACCOMMODATION ATTRACTION OTHER
     const type = req.body.type;
+    const userId = req.user.id;
 
     // check parameter
-    if (!id || !type) {
+    if (!placeId || !type) {
       res.status(400).json({ error: "Missing or invalid parameters" });
     }
 
@@ -29,7 +31,7 @@ router.get("/information", async (req, res) => {
       Authorization: TAT_KEY,
     };
 
-    let place = await Place.findOne({ placeId: req.body.id });
+    let place = await Place.findOne({ placeId: placeId });
 
     // if didn't have place in dataBase get from TAT
     if (!place) {
@@ -47,22 +49,22 @@ router.get("/information", async (req, res) => {
       }
 
       // call api to TAT
-      const response = await axios(
-        `https://tatapi.tourismthailand.org/tatapi/v5/${type.toLowerCase()}/${id}`,
+      const TAT_response = await axios(
+        `https://tatapi.tourismthailand.org/tatapi/v5/${type.toLowerCase()}/${placeId}`,
         {
           headers: header,
         }
       );
 
-      const tag = response.data.result.place_information[
+      const tag = TAT_response.data.result.place_information[
         `${type.toLowerCase()}_types`
       ]
-        ? response.data.result.place_information[
+        ? TAT_response.data.result.place_information[
             `${type.toLowerCase()}_types`
           ].map((item) => item.description)
         : null;
 
-      const responseData = response.data.result;
+      const responseData = TAT_response.data.result;
       place = {
         placeId: responseData.place_id,
         placeName: responseData.place_name,
@@ -89,12 +91,44 @@ router.get("/information", async (req, res) => {
       };
       const createNewPlace = await Place.create(place);
     }
-    // STEP
-    // get total checkIn and check did user already checkIn or not
-    // get forecast
-    // set back to client
+    const checkIns = await CheckIn.find({ placeId: placeId });
+    // check did user already checkIn this place?
+    const isUserCheckIn = checkIns.reduce((result, current) => {
+      if (current.userId === userId) result = true;
+      return result;
+    }, false);
 
-    return res.json(place);
+    // get forecast
+
+    const now = new Date();
+
+    // Formatting the date and time
+    // by using date.format() method
+    const dateValue = date.format(now, "YYYY-MM-DD");
+    const TMD_response = await axios(
+      "https://data.tmd.go.th/nwpapi/v1/forecast/location/daily/place",
+      {
+        params: {
+          province: place.location.province,
+          amphoe: place.location.district,
+          date: dateValue,
+          duration: 5,
+        },
+        headers: {
+          accept: "application/json",
+          authorization: TMD_KEY,
+        },
+      }
+    );
+
+    // sent data to client
+    let response = {
+      ...place.toObject(),
+      totalCheckIn: checkIns.length,
+      alreadyCheckIn: isUserCheckIn,
+      forecasts: TMD_response.data.WeatherForecasts[0].forecasts,
+    };
+    return res.json(response);
   } catch (error) {
     return res.status(400).json({ error: error });
   }
@@ -102,9 +136,13 @@ router.get("/information", async (req, res) => {
 
 router.post("/checkIn", async (req, res) => {
   try {
+    const placeId = req.body.placeId;
+    const userId = req.user.id;
+
+    // check if user already checkIn res error
     const checkIn = await CheckIn.findOne({
-      placeId: req.body.placeId,
-      userId: req.user.id,
+      placeId: placeId,
+      userId: userId,
     });
     if (checkIn) {
       return res
@@ -112,16 +150,18 @@ router.post("/checkIn", async (req, res) => {
         .json({ error: "Already checked in at this place" });
     }
 
-    const place = await Place.findOne({ placeId: req.body.placeId });
+    // check is placeId available
+    const place = await Place.findOne({ placeId: placeId });
     if (!place) {
       return res
         .status(404)
-        .json({ error: `No place found for placeId: ${req.body.placeId}` });
+        .json({ error: `No place found for placeId: ${placeId}` });
     }
 
+    // create new checkIn
     await CheckIn.create({
-      placeId: req.body.placeId,
-      userId: req.user.id,
+      placeId: placeId,
+      userId: userId,
       province: place.location.province,
     });
     return res.json({ message: "Success checkIn" });

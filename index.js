@@ -9,10 +9,10 @@ const app = express();
 
 const http = require("http");
 
-const port = 3000;
+const PORT = process.env.PORT;
 const server = http.createServer(app);
 const { Server } = require("socket.io");
-server.listen(port, () => console.log("listening on *:3000"));
+server.listen(PORT, () => console.log(`listening on port ${PORT}`));
 
 const MONGODB_URI = process.env.MONGODB_URI;
 
