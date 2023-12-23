@@ -1,7 +1,9 @@
 const cors = require("cors");
 const express = require("express");
 const mongoose = require("mongoose");
+const swaggerUi = require("swagger-ui-express");
 const auth = require("./src/middlewares/auth");
+const swaggerDocument = require("./src/swagger.json");
 
 require("dotenv").config();
 
@@ -16,9 +18,11 @@ server.listen(PORT, () => console.log(`listening on port ${PORT}`));
 
 const MONGODB_URI = process.env.MONGODB_URI;
 
-const publicPaths = ["/login", "/register"];
+const publicPaths = ["/login", "/register", "/docs/"];
 
 // ==================== middleware ====================
+app.use("/docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument));
+
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
