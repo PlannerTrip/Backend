@@ -32,7 +32,7 @@ router.post("/login", async (req, res) => {
 
       const token = jwt.encode(payload, SECRET);
 
-      return res.json({ message: "login success", token: token });
+      return res.status(200).json({ message: "login success", token: token });
     }
     return res.json({ error: "wrong password" });
   } catch (err) {
@@ -55,14 +55,14 @@ router.post("/register", async (req, res, next) => {
       id: uuidv4(),
     });
 
-    return res.json("Create new user success");
+    return res.json({ message: "Create new user success" });
   } catch (err) {
     return next(err);
   }
 });
 
 router.get("/authCheck", (req, res) => {
-  return res.json("success");
+  return res.status(204).send();
 });
 
 module.exports = router;

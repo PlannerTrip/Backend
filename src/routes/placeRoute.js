@@ -1,13 +1,10 @@
 require("dotenv").config();
 
-const path = require("path");
-const sharp = require("sharp");
 const axios = require("axios");
-const multer = require("multer");
 const express = require("express");
-const uploadMiddleware = require("../middlewares/uploadMiddleware");
 
 const Place = require("../models/Place.js");
+const CheckIn = require("../models/CheckIn.js");
 
 const TAT_KEY = process.env.TAT_KEY;
 
@@ -16,7 +13,6 @@ const router = express.Router();
 // get place information from id and type
 router.get("/information", async (req, res) => {
   try {
-    console.log(req.body);
     const id = req.body.id;
 
     // 5 type SHOP RESTAURANT ACCOMMODATION ATTRACTION OTHER
@@ -35,6 +31,7 @@ router.get("/information", async (req, res) => {
 
     let place = await Place.findOne({ placeId: req.body.id });
 
+    // if didn't have place in dataBase get from TAT
     if (!place) {
       const noWeekDay = ["ACCOMMODATION", "OTHER"];
       const listOfType = [
@@ -92,92 +89,45 @@ router.get("/information", async (req, res) => {
       };
       const createNewPlace = await Place.create(place);
     }
+    // STEP
+    // get total checkIn and check did user already checkIn or not
+    // get forecast
+    // set back to client
 
     return res.json(place);
-  } catch (err) {
-    console.log(err);
-    return res.json(err);
-  }
-});
-
-const upload = multer({
-  limits: {
-    fileSize: 2000000,
-  },
-  fileFilter(req, file, cb) {
-    if (!file.originalname.match(/\.(jpg|jpeg|png)$/)) {
-      return cb(new Error("Please upload a valid image file"));
-    }
-    cb(undefined, true);
-  },
-});
-
-// single img
-router.post("/image", upload.single("upload"), async (req, res) => {
-  try {
-    const newPath = __dirname.split("/");
-    newPath.pop();
-
-    await sharp(req.file.buffer)
-      .resize({ width: 250, height: 250 })
-      .png()
-      .toFile(newPath.join("/") + `/images/${req.file.originalname}`);
-    return res.status(201).send("Image uploaded succesfully");
   } catch (error) {
-    console.log(error);
-    return res.status(400).send(error);
+    return res.status(400).json({ error: error });
   }
 });
 
-// multiple img
-router.post("/upload", uploadMiddleware, (req, res) => {
-  const files = req.files;
-
-  return res.json("done");
-});
-
-//  ================== fireBase ==================
-const uploadFirebase = multer({ storage: multer.memoryStorage() });
-
-const { initializeApp, cert } = require("firebase-admin/app");
-const { getStorage, getDownloadURL } = require("firebase-admin/storage");
-
-const serviceAccount = require("../../firebaseServiceAccountKey.json");
-
-initializeApp({
-  credential: cert(serviceAccount),
-  storageBucket: process.env.BUCKET_URL,
-});
-
-const bucket = getStorage().bucket();
-
-router.post(
-  "/uploadFirebase",
-  uploadFirebase.single("file"),
-  async (req, res) => {
-    try {
-      const fileName = Date.now() + path.extname(req.file.originalname);
-      const file = bucket.file(fileName);
-      await file.createWriteStream().end(req.file.buffer);
-
-      const downloadURL = `https://firebasestorage.googleapis.com/v0/b/${
-        bucket.name
-      }/o/${fileName}?alt=media&token=${Date.now()}`;
-
-      // const downloadURL = await getDownloadURL(file)
-      return res.json({ url: downloadURL });
-      // return res.json("done");
-    } catch (err) {
-      return res.status(404).json({ error: err });
+router.post("/checkIn", async (req, res) => {
+  try {
+    const checkIn = await CheckIn.findOne({
+      placeId: req.body.placeId,
+      userId: req.user.id,
+    });
+    if (checkIn) {
+      return res
+        .status(409)
+        .json({ error: "Already checked in at this place" });
     }
-  }
-);
 
-router.delete("/delete", async (req, res) => {
-  const filesName = req.body.filename;
-  const file = bucket.file(filesName);
-  await file.delete();
-  return res.json("done");
+    const place = await Place.findOne({ placeId: req.body.placeId });
+    if (!place) {
+      return res
+        .status(404)
+        .json({ error: `No place found for placeId: ${req.body.placeId}` });
+    }
+
+    await CheckIn.create({
+      placeId: req.body.placeId,
+      userId: req.user.id,
+      province: place.location.province,
+    });
+    return res.json({ message: "Success checkIn" });
+  } catch (error) {
+    return res.status(400).json({ error: error });
+  }
 });
 
 module.exports = router;
