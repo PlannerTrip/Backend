@@ -19,6 +19,8 @@ router.get("/information", async (req, res) => {
     // 5 type SHOP RESTAURANT ACCOMMODATION ATTRACTION OTHER
     const type = req.body.type;
     const userId = req.user.id;
+    const forecastDate = req.body.forecastDate;
+    const forecastDuration = req.body.forecastDuration;
 
     // check parameter
     if (!placeId || !type) {
@@ -35,14 +37,7 @@ router.get("/information", async (req, res) => {
 
     // if didn't have place in dataBase get from TAT
     if (!place) {
-      const noWeekDay = ["ACCOMMODATION", "OTHER"];
-      const listOfType = [
-        "ATTRACTION",
-        "SHOP",
-        "ACCOMMODATION",
-        "RESTAURANT",
-        "OTHER",
-      ];
+      const listOfType = ["ATTRACTION", "SHOP", "ACCOMMODATION", "RESTAURANT"];
       // check type
       if (!listOfType.includes(type)) {
         return res.status(400).json({ error: "Invalid type" });
@@ -85,9 +80,10 @@ router.get("/information", async (req, res) => {
           district: responseData.location.district,
           province: responseData.location.province,
         },
-        weekDay: noWeekDay.includes(type)
-          ? null
-          : responseData.opening_hours.weekday_text,
+        weekDay:
+          type === "ACCOMMODATION"
+            ? null
+            : responseData.opening_hours.weekday_text,
       };
       const createNewPlace = await Place.create(place);
     }
@@ -105,22 +101,24 @@ router.get("/information", async (req, res) => {
     // Formatting the date and time
     // by using date.format() method
     const dateValue = date.format(now, "YYYY-MM-DD");
-    const TMD_response = await axios(
-      "https://data.tmd.go.th/nwpapi/v1/forecast/location/daily/place",
-      {
-        params: {
-          province: place.location.province,
-          amphoe: place.location.district,
-          date: dateValue,
-          duration: 5,
-        },
-        headers: {
-          accept: "application/json",
-          authorization: TMD_KEY,
-        },
-      }
-    );
-
+    let TMD_response = null;
+    if (forecastDate && forecastDuration) {
+      TMD_response = await axios(
+        "https://data.tmd.go.th/nwpapi/v1/forecast/location/daily/place",
+        {
+          params: {
+            province: place.location.province,
+            amphoe: place.location.district,
+            date: forecastDate,
+            duration: forecastDuration,
+          },
+          headers: {
+            accept: "application/json",
+            authorization: TMD_KEY,
+          },
+        }
+      );
+    }
     // sent data to client
     let response = {
       ...place.toObject(),
