@@ -6,6 +6,7 @@ const date = require("date-and-time");
 
 const Place = require("../models/Place.js");
 const CheckIn = require("../models/CheckIn.js");
+const { distanceTwoPoint } = require("../utils/function.js");
 
 const TAT_KEY = process.env.TAT_KEY;
 const TMD_KEY = process.env.TMD_KEY;
@@ -134,19 +135,10 @@ router.get("/information", async (req, res) => {
 
 router.post("/checkIn", async (req, res) => {
   try {
+    const latitude = req.body.latitude;
+    const longitude = req.body.longitude;
     const placeId = req.body.placeId;
     const userId = req.user.id;
-
-    // check if user already checkIn res error
-    const checkIn = await CheckIn.findOne({
-      placeId: placeId,
-      userId: userId,
-    });
-    if (checkIn) {
-      return res
-        .status(409)
-        .json({ error: "Already checked in at this place" });
-    }
 
     // check is placeId available
     const place = await Place.findOne({ placeId: placeId });
@@ -154,6 +146,35 @@ router.post("/checkIn", async (req, res) => {
       return res
         .status(404)
         .json({ error: `No place found for placeId: ${placeId}` });
+    }
+
+    const distance = distanceTwoPoint(
+      place.latitude,
+      place.longitude,
+      latitude,
+      longitude
+    );
+
+    if (distance > 5) {
+      return res
+        .status(404)
+        .json({
+          error: `The distance (${distance.toFixed(
+            2
+          )} km) exceeds the allowed threshold. `,
+        });
+    }
+
+    // check if user already checkIn res error
+    const checkIn = await CheckIn.findOne({
+      placeId: placeId,
+      userId: userId,
+    });
+
+    if (checkIn) {
+      return res
+        .status(409)
+        .json({ error: "Already checked in at this place" });
     }
 
     // create new checkIn

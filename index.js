@@ -48,9 +48,11 @@ mongoose
 
 const authRoutes = require("./src/routes/authRoutes");
 const placeRoute = require("./src/routes/placeRoute");
+const reviewRoutes = require("./src/routes/reviewRotes");
 
 app.use("/", authRoutes);
 app.use("/place", placeRoute);
+app.use("/review", reviewRoutes);
 
 // ==================== socket ====================
 
