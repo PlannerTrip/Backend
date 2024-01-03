@@ -18,16 +18,17 @@ const router = express.Router();
 // get place information from id and type
 router.get("/information", async (req, res) => {
   try {
-    const placeId = req.body.placeId;
-    // 5 type SHOP RESTAURANT ACCOMMODATION ATTRACTION OTHER
-    const type = req.body.type;
+    const placeId = req.query.placeId;
+    // 4 type SHOP RESTAURANT ACCOMMODATION ATTRACTION
+    const type = req.query.type;
+    const forecastDate = req.query.forecastDate;
+    const forecastDuration = req.query.forecastDuration;
+
     const userId = req.user.id;
-    const forecastDate = req.body.forecastDate;
-    const forecastDuration = req.body.forecastDuration;
 
     // check parameter
     if (!placeId || !type) {
-      res.status(400).json({ error: "Missing or invalid parameters" });
+      return res.status(400).json({ error: "Missing or invalid parameters" });
     }
 
     const header = {
@@ -146,11 +147,14 @@ router.get("/information", async (req, res) => {
       ...responsePlace,
       totalCheckIn: checkIns.length,
       alreadyCheckIn: isUserCheckIn,
-      forecasts: TMD_response.data.WeatherForecasts[0].forecasts,
+      forecasts: TMD_response
+        ? TMD_response.data.WeatherForecasts[0].forecasts
+        : [],
       review: responseReview,
     };
     return res.json(response);
   } catch (error) {
+    console.log(error);
     return res.status(400).json({ error: error });
   }
 });

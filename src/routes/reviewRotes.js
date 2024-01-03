@@ -9,7 +9,6 @@ const { v4: uuidv4 } = require("uuid");
 const crypto = require("crypto");
 
 //  ================== fireBase ==================
-const uploadFirebase = multer({ storage: multer.memoryStorage() });
 
 const { initializeApp, cert } = require("firebase-admin/app");
 const { getStorage } = require("firebase-admin/storage");
@@ -26,14 +25,14 @@ initializeApp({
 
 const bucket = getStorage().bucket();
 
-const uploadFirebase2 = multer({
+const uploadFirebase = multer({
   storage: multer.memoryStorage(),
   limits: {
     files: 5,
   },
 });
 
-router.post("/", uploadFirebase2.array("files", 5), async (req, res) => {
+router.post("/", uploadFirebase.array("files", 5), async (req, res) => {
   try {
     const { rating, content, placeId } = req.body;
 
@@ -87,69 +86,65 @@ router.post("/", uploadFirebase2.array("files", 5), async (req, res) => {
   }
 });
 
-router.post(
-  "/uploadFirebase",
-  uploadFirebase.single("file"),
-  async (req, res) => {
-    try {
-      const fileName = Date.now() + path.extname(req.file.originalname);
-      const file = bucket.file(fileName);
-      await file.createWriteStream().end(req.file.buffer);
-
-      const downloadURL = `https://firebasestorage.googleapis.com/v0/b/${
-        bucket.name
-      }/o/${fileName}?alt=media&token=${Date.now()}`;
-
-      // const downloadURL = await getDownloadURL(file)
-      return res.json({ url: downloadURL });
-      // return res.json("done");
-    } catch (err) {
-      return res.status(404).json({ error: err });
-    }
-  }
-);
-
 router.delete("/delete", async (req, res) => {
-  const filesName = req.body.filename;
-  const file = bucket.file(filesName);
-  await file.delete();
-  return res.json("done");
+  try {
+    const reviewId = req.body.reviewId;
+    const userId = req.user.id;
+
+    const review = await Review.findOne({ reviewId: reviewId });
+
+    if (!review) {
+      return res
+        .status(404)
+        .json({ error: `No review found for reviewId: ${reviewId}` });
+    }
+
+    if (review.userId !== userId) {
+      return res.status(403).json({ error: "Permission denied" });
+    }
+
+    // delete img from firebase
+
+    await review.img.forEach(async (item) => {
+      const file = bucket.file(item.fileName);
+      await file.delete();
+    });
+
+    return res.json("delete review success");
+  } catch (err) {
+    console.log(err);
+    return res.status(404).json({ error: err });
+  }
+});
+
+router.post("/like", async (req, res) => {
+  try {
+    const reviewId = req.body.reviewId;
+    const userId = req.user.id;
+
+    const review = await Review.findOne({ reviewId: reviewId });
+
+    if (!review) {
+      return res
+        .status(404)
+        .json({ error: `No review found for reviewId: ${reviewId}` });
+    }
+
+    if (review.likes.some((item) => item.userId == userId)) {
+      review.likes = review.likes.filter((item) => item.userId !== userId);
+      await review.save();
+
+      return res.json({ message: `Unlike success` });
+    }
+
+    review.likes = [...review.likes, { userId: userId }];
+    await review.save();
+
+    res.json({ message: "Like success" });
+  } catch (err) {
+    console.log(err);
+    return res.status(404).json({ error: err });
+  }
 });
 
 module.exports = router;
-
-// const upload = multer({
-//   limits: {
-//     fileSize: 2000000,
-//   },
-//   fileFilter(req, file, cb) {
-//     if (!file.originalname.match(/\.(jpg|jpeg|png)$/)) {
-//       return cb(new Error("Please upload a valid image file"));
-//     }
-//     cb(undefined, true);
-//   },
-// });
-
-// // single img
-// router.post("/image", upload.single("upload"), async (req, res) => {
-//   try {
-//     const newPath = __dirname.split("/");
-//     newPath.pop();
-
-//     await sharp(req.file.buffer)
-//       .resize({ width: 250, height: 250 })
-//       .png()
-//       .toFile(newPath.join("/") + `/images/${req.file.originalname}`);
-//     return res.status(201).send("Image uploaded succesfully");
-//   } catch (error) {
-//     console.log(error);
-//     return res.status(400).send(error);
-//   }
-// });
-
-// // multiple img
-// router.post("/upload", uploadMiddleware, (req, res) => {
-//   const files = req.files;
-
-//   return res.json("done");
-// });

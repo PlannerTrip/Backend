@@ -4,18 +4,166 @@
     "title": "My API",
     "version": "1.0.0"
   },
+  "security": [
+    {
+      "ApiKeyAuth": []
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "ApiKeyAuth": {
+        "type": "apiKey",
+        "in": "header",
+        "name": "Authorization"
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "Auth",
+      "description": ""
+    },
+    {
+      "name": "Place",
+      "description": ""
+    },
+    {
+      "name": "Review",
+      "description": ""
+    }
+  ],
   "paths": {
     "/place/information": {
       "get": {
         "summary": "Get information about a place",
+        "tags": ["Place"],
+        "parameters": [
+          {
+            "name": "placeId",
+            "in": "query",
+            "description": "ID of the place ex P08000001",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "description": " 4 type SHOP RESTAURANT ACCOMMODATION ATTRACTION ",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "forecastDate",
+            "in": "query",
+            "description": "Optional forecast date",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "forecastDuration",
+            "in": "query",
+            "description": "Optional forecast duration",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "Successful response",
             "content": {
               "application/json": {
                 "example": {
-                  "placeName": "Example Place",
-                  "details": "Information about the place"
+                  "contact": {
+                    "phone": null,
+                    "url": null
+                  },
+                  "location": {
+                    "address": "",
+                    "district": "สาทร",
+                    "province": "กรุงเทพมหานคร"
+                  },
+                  "_id": "6586e6a332bcc1af3a85da97",
+                  "placeId": "P08000001",
+                  "placeName": "อัลโดส์",
+                  "type": "RESTAURANT",
+                  "coverImg": [
+                    "https://tatapi.tourismthailand.org/tatfs/Image/CustomPOI/Picture/P08000001_1.jpeg"
+                  ],
+                  "introduction": "",
+                  "tag": [
+                    "จัดเลี้ยงบริษัท",
+                    "ดินเนอร์แบบทางการ",
+                    "ผับและบาร์",
+                    "โรแมนติก เดตแรก"
+                  ],
+                  "latitude": 13.72042,
+                  "longitude": 100.528338,
+                  "weekDay": {
+                    "day1": null,
+                    "day2": null,
+                    "day3": null,
+                    "day4": null,
+                    "day5": null,
+                    "day6": null,
+                    "day7": null,
+                    "_id": "6586e6a332bcc1af3a85da98"
+                  },
+                  "__v": 0,
+                  "totalCheckIn": 0,
+                  "alreadyCheckIn": false,
+                  "forecasts": [
+                    {
+                      "time": "2024-01-04T00:00:00+07:00",
+                      "data": {
+                        "cond": 1,
+                        "rh": 46.34,
+                        "tc": 29.33
+                      }
+                    },
+                    {
+                      "time": "2024-01-05T00:00:00+07:00",
+                      "data": {
+                        "cond": 1,
+                        "rh": 43.32,
+                        "tc": 28.75
+                      }
+                    }
+                  ],
+                  "review": [
+                    {
+                      "reviewId": "7d70808b-01fe-454e-bc87-d7ecb95968c0",
+                      "userId": "58dfb372-c190-4690-a156-66495cb6c1df",
+                      "content": "ดีมากเลยครับ",
+                      "img": [
+                        {
+                          "url": "https://firebasestorage.googleapis.com/v0/b/tripplaner-abdbe.appspot.com/o/1704276574223_e148d44bfa2728a2a1ba0f83.png?alt=media&token=1704276574235",
+                          "fileName": "1704276574223_e148d44bfa2728a2a1ba0f83.png",
+                          "_id": "6595325e6933230caf1343c3"
+                        },
+                        {
+                          "url": "https://firebasestorage.googleapis.com/v0/b/tripplaner-abdbe.appspot.com/o/1704276574232_10330213cab5fd9a57bd16b4.jpg?alt=media&token=1704276574235",
+                          "fileName": "1704276574232_10330213cab5fd9a57bd16b4.jpg",
+                          "_id": "6595325e6933230caf1343c4"
+                        },
+                        {
+                          "url": "https://firebasestorage.googleapis.com/v0/b/tripplaner-abdbe.appspot.com/o/1704276574234_1886f2ad6cc1003b8deafbf6.jpg?alt=media&token=1704276574235",
+                          "fileName": "1704276574234_1886f2ad6cc1003b8deafbf6.jpg",
+                          "_id": "6595325e6933230caf1343c5"
+                        }
+                      ],
+                      "rating": 4,
+                      "totalLike": 1,
+                      "alreadyLike": true
+                    }
+                  ]
                 }
               }
             }
@@ -23,17 +171,370 @@
         }
       }
     },
+
     "/place/checkIn": {
       "post": {
-        "summary": "Check in at a place",
+        "tags": ["Place"],
+        "summary": "CheckIn at a place",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "latitude": {
+                    "type": "number"
+                  },
+                  "longitude": {
+                    "type": "number"
+                  },
+                  "placeId": {
+                    "type": "string"
+                  }
+                },
+                "required": ["latitude", "longitude", "placeId"]
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "description": "Successful check-in",
             "content": {
               "application/json": {
                 "example": {
-                  "message": "Check-in successful",
-                  "timestamp": "2023-12-24T12:00:00Z"
+                  "message": "Success checkIn"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": "No place found for placeId: {placeId} or The distance (distance km) exceeds the allowed threshold."
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": "Already checked in at this place"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": "{error message}"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/login": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "User login",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "username": {
+                    "type": "string"
+                  },
+                  "password": {
+                    "type": "string"
+                  }
+                },
+                "required": ["username", "password"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful login",
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "Login success",
+                  "token": "{JWT token}"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": "No user in database"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": "Wrong password"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": "Something went wrong {error message}"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/register": {
+      "post": {
+        "tags": ["Auth"],
+        "summary": "Register a new user",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "username": {
+                    "type": "string"
+                  },
+                  "password": {
+                    "type": "string"
+                  }
+                },
+                "required": ["username", "password"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful registration",
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "Create new user success"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": "User already exists"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": "Something went wrong {error message}"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/authCheck": {
+      "get": {
+        "tags": ["Auth"],
+        "summary": "Check authentication status",
+        "responses": {
+          "204": {
+            "description": "Auth",
+            "content": {}
+          },
+          "401": {
+            "description": "Error: Unauthorized",
+            "content": {}
+          }
+        }
+      }
+    },
+    "/review": {
+      "post": {
+        "tags": ["Review"],
+        "summary": "Create a new review",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "rating": {
+                    "type": "number"
+                  },
+                  "content": {
+                    "type": "string"
+                  },
+                  "placeId": {
+                    "type": "string"
+                  },
+                  "files": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "format": "binary"
+                    }
+                  }
+                },
+                "required": ["rating", "content", "placeId", "files"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "Success review"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": "rating, content, placeId, and files are required in the request body."
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": "No place found for placeId: {placeId}"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/review/delete": {
+      "delete": {
+        "tags": ["Review"],
+        "summary": "Delete a review",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "reviewId": {
+                    "type": "string"
+                  }
+                },
+                "required": ["reviewId"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "Delete review success"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": "Permission denied"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": "No review found for reviewId: {reviewId}"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/review/like": {
+      "post": {
+        "tags": ["Review"],
+        "summary": "Like or unlike a review",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "reviewId": {
+                    "type": "string"
+                  }
+                },
+                "required": ["reviewId"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "Unlike success or like success"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": "No review found for reviewId: {reviewId}"
                 }
               }
             }
