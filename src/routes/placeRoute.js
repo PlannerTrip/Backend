@@ -6,6 +6,8 @@ const date = require("date-and-time");
 
 const Place = require("../models/Place.js");
 const CheckIn = require("../models/CheckIn.js");
+const Review = require("../models/Review.js");
+
 const { distanceTwoPoint } = require("../utils/function.js");
 
 const TAT_KEY = process.env.TAT_KEY;
@@ -35,7 +37,7 @@ router.get("/information", async (req, res) => {
     };
 
     let place = await Place.findOne({ placeId: placeId });
-
+    let responsePlace = place ? place.toObject() : {};
     // if didn't have place in dataBase get from TAT
     if (!place) {
       const listOfType = ["ATTRACTION", "SHOP", "ACCOMMODATION", "RESTAURANT"];
@@ -61,7 +63,7 @@ router.get("/information", async (req, res) => {
         : null;
 
       const responseData = TAT_response.data.result;
-      place = {
+      responsePlace = {
         placeId: responseData.place_id,
         placeName: responseData.place_name,
         type: type,
@@ -86,10 +88,12 @@ router.get("/information", async (req, res) => {
             ? null
             : responseData.opening_hours.weekday_text,
       };
-      const createNewPlace = await Place.create(place);
+      const createNewPlace = await Place.create(responsePlace);
     }
+
     const checkIns = await CheckIn.find({ placeId: placeId });
     // check did user already checkIn this place?
+
     const isUserCheckIn = checkIns.reduce((result, current) => {
       if (current.userId === userId) result = true;
       return result;
@@ -100,7 +104,6 @@ router.get("/information", async (req, res) => {
     const now = new Date();
 
     // Formatting the date and time
-    // by using date.format() method
     const dateValue = date.format(now, "YYYY-MM-DD");
     let TMD_response = null;
     if (forecastDate && forecastDuration) {
@@ -108,8 +111,8 @@ router.get("/information", async (req, res) => {
         "https://data.tmd.go.th/nwpapi/v1/forecast/location/daily/place",
         {
           params: {
-            province: place.location.province,
-            amphoe: place.location.district,
+            province: responsePlace.location.province,
+            amphoe: responsePlace.location.district,
             date: forecastDate,
             duration: forecastDuration,
           },
@@ -120,12 +123,31 @@ router.get("/information", async (req, res) => {
         }
       );
     }
+
+    // get all review of this place
+    const review = await Review.find({ placeId: placeId });
+
+    let responseReview = review.map((item) => {
+      alreadyLike = item.likes.some((like) => like.userId === userId);
+
+      return {
+        reviewId: item.reviewId,
+        userId: item.userId,
+        content: item.content,
+        img: item.img,
+        rating: item.rating,
+        totalLike: item.likes.length,
+        alreadyLike: alreadyLike,
+      };
+    });
+
     // sent data to client
     let response = {
-      ...place.toObject(),
+      ...responsePlace,
       totalCheckIn: checkIns.length,
       alreadyCheckIn: isUserCheckIn,
       forecasts: TMD_response.data.WeatherForecasts[0].forecasts,
+      review: responseReview,
     };
     return res.json(response);
   } catch (error) {
@@ -156,13 +178,11 @@ router.post("/checkIn", async (req, res) => {
     );
 
     if (distance > 5) {
-      return res
-        .status(404)
-        .json({
-          error: `The distance (${distance.toFixed(
-            2
-          )} km) exceeds the allowed threshold. `,
-        });
+      return res.status(404).json({
+        error: `The distance (${distance.toFixed(
+          2
+        )} km) exceeds the allowed threshold. `,
+      });
     }
 
     // check if user already checkIn res error

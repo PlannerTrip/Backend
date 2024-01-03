@@ -4,17 +4,20 @@ const express = require("express");
 
 const router = express.Router();
 const path = require("path");
-const sharp = require("sharp");
 const multer = require("multer");
-const uploadMiddleware = require("../middlewares/uploadMiddleware");
+const { v4: uuidv4 } = require("uuid");
+const crypto = require("crypto");
 
 //  ================== fireBase ==================
 const uploadFirebase = multer({ storage: multer.memoryStorage() });
 
 const { initializeApp, cert } = require("firebase-admin/app");
-const { getStorage, getDownloadURL } = require("firebase-admin/storage");
+const { getStorage } = require("firebase-admin/storage");
 
 const serviceAccount = require("../../firebaseServiceAccountKey.json");
+
+const Review = require("../models/Review.js");
+const Place = require("../models/Place.js");
 
 initializeApp({
   credential: cert(serviceAccount),
@@ -22,6 +25,67 @@ initializeApp({
 });
 
 const bucket = getStorage().bucket();
+
+const uploadFirebase2 = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    files: 5,
+  },
+});
+
+router.post("/", uploadFirebase2.array("files", 5), async (req, res) => {
+  try {
+    const { rating, content, placeId } = req.body;
+
+    if (!rating || !content || !placeId) {
+      return res.status(400).json({
+        error:
+          "rating and content and placeId are required in the request body.",
+      });
+    }
+
+    const userId = req.user.id;
+    const files = req.files;
+    const downloadURLs = [];
+
+    const place = await Place.findOne({ placeId: placeId });
+    if (!place) {
+      return res
+        .status(404)
+        .json({ error: `No place found for placeId: ${placeId}` });
+    }
+
+    //  upload file
+    await files.forEach(async (item) => {
+      const randomString = crypto.randomBytes(12).toString("hex");
+
+      const fileName =
+        Date.now() + "_" + randomString + path.extname(item.originalname);
+      const file = bucket.file(fileName);
+      await file.createWriteStream().end(item.buffer);
+
+      const downloadURL = `https://firebasestorage.googleapis.com/v0/b/${
+        bucket.name
+      }/o/${fileName}?alt=media&token=${Date.now()}`;
+
+      downloadURLs.push({ url: downloadURL, fileName: fileName });
+    });
+
+    await Review.create({
+      reviewId: uuidv4(),
+      userId: userId,
+      placeId: placeId,
+      content: content,
+      rating: rating,
+      img: downloadURLs,
+      likes: [],
+    });
+
+    res.json({ message: "success review" });
+  } catch (err) {
+    return res.status(404).json({ error: err });
+  }
+});
 
 router.post(
   "/uploadFirebase",
