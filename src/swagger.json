@@ -124,16 +124,16 @@
                       "time": "2024-01-04T00:00:00+07:00",
                       "data": {
                         "cond": 1,
-                        "rh": 46.34,
-                        "tc": 29.33
+                        "rh": 40.06,
+                        "tc": 31.16
                       }
                     },
                     {
                       "time": "2024-01-05T00:00:00+07:00",
                       "data": {
                         "cond": 1,
-                        "rh": 43.32,
-                        "tc": 28.75
+                        "rh": 51.03,
+                        "tc": 29.59
                       }
                     }
                   ],
@@ -163,7 +163,8 @@
                       "totalLike": 1,
                       "alreadyLike": true
                     }
-                  ]
+                  ],
+                  "alreadyBookmark": true
                 }
               }
             }
@@ -241,6 +242,60 @@
         }
       }
     },
+    "place/bookmark": {
+      "post": {
+        "tags": ["Place"],
+        "summary": "Bookmark or unbookmark a place",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "placeId": {
+                    "type": "string"
+                  }
+                },
+                "required": ["placeId"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "Bookmark or unbookmark success"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": "No place found for placeId: {placeId}"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": "Error message"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+
     "/login": {
       "post": {
         "tags": ["Auth"],

@@ -1,4 +1,5 @@
 const bcrypt = require("bcrypt");
+const Place = require("../models/Place.js");
 
 const hashPassword = async (password) => {
   try {
@@ -38,4 +39,72 @@ const distanceTwoPoint = (lat1, lon1, lat2, lon2) => {
   return R * c;
 };
 
-module.exports = { hashPassword, comparePasswords, distanceTwoPoint };
+const getPlaceInformation = async (type, placeId) => {
+  try {
+    let place = await Place.findOne({ placeId: placeId });
+    // if didn't have place in dataBase get from TAT
+    if (!place) {
+      const listOfType = ["ATTRACTION", "SHOP", "ACCOMMODATION", "RESTAURANT"];
+      // check type
+      if (!listOfType.includes(type)) {
+        return res.status(400).json({ error: "Invalid type" });
+      }
+
+      // call api to TAT
+      const TAT_response = await axios(
+        `https://tatapi.tourismthailand.org/tatapi/v5/${type.toLowerCase()}/${placeId}`,
+        {
+          headers: header,
+        }
+      );
+
+      const tag = TAT_response.data.result.place_information[
+        `${type.toLowerCase()}_types`
+      ]
+        ? TAT_response.data.result.place_information[
+            `${type.toLowerCase()}_types`
+          ].map((item) => item.description)
+        : null;
+
+      const responseData = TAT_response.data.result;
+      const responsePlace = {
+        placeId: responseData.place_id,
+        placeName: responseData.place_name,
+        type: type,
+        coverImg: responseData.web_picture_urls,
+        introduction: responseData.place_information.introduction,
+        tag: tag,
+        latitude: responseData.latitude,
+        longitude: responseData.longitude,
+        contact: {
+          phone: responseData.contact.phones
+            ? responseData.contact.phones[0]
+            : null,
+          url: responseData.contact.urls ? responseData.contact.urls[0] : null,
+        },
+        location: {
+          address: responseData.location.address,
+          district: responseData.location.district,
+          province: responseData.location.province,
+        },
+        weekDay:
+          type === "ACCOMMODATION"
+            ? null
+            : responseData.opening_hours.weekday_text,
+      };
+      const createNewPlace = await Place.create(responsePlace);
+      return responsePlace;
+    } else {
+      return place.toObject();
+    }
+  } catch (err) {
+    return res.status(400).json({ error: error });
+  }
+};
+
+module.exports = {
+  hashPassword,
+  comparePasswords,
+  distanceTwoPoint,
+  getPlaceInformation,
+};
