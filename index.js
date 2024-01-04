@@ -30,7 +30,8 @@ app.use((req, res, next) => {
   if (publicPaths.includes(req.path)) {
     next();
   } else {
-    auth(req, res, next);
+    next();
+    // auth(req, res, next);
   }
 });
 

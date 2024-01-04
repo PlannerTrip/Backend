@@ -207,4 +207,11 @@ router.post("/bookmark", async (req, res) => {
   }
 });
 
+router.get("/bookmark", async (req, res) => {
+  try {
+  } catch (err) {
+    return res.status(400).json({ error: err });
+  }
+});
+
 module.exports = router;
