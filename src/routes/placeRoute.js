@@ -209,6 +209,14 @@ router.post("/bookmark", async (req, res) => {
 
 router.get("/bookmark", async (req, res) => {
   try {
+    const tripId = req.query.tripId;
+    const userId = req.user.id;
+    const bookmark = await Bookmark.find({ userId: userId });
+    const places = [];
+    await bookmark.forEach(async (item) => {
+      const place = await Place.find({ placeId: item.placeId });
+      // รอ TripId
+    });
   } catch (err) {
     return res.status(400).json({ error: err });
   }

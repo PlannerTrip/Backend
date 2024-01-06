@@ -30,8 +30,7 @@ app.use((req, res, next) => {
   if (publicPaths.includes(req.path)) {
     next();
   } else {
-    next();
-    // auth(req, res, next);
+    auth(req, res, next);
   }
 });
 
@@ -50,10 +49,12 @@ mongoose
 const authRoutes = require("./src/routes/authRoutes");
 const placeRoute = require("./src/routes/placeRoute");
 const reviewRoutes = require("./src/routes/reviewRotes");
+const tripRoutes = require("./src/routes/tripRoutes");
 
 app.use("/", authRoutes);
 app.use("/place", placeRoute);
 app.use("/review", reviewRoutes);
+app.use("/trip", tripRoutes);
 
 // ==================== socket ====================
 
