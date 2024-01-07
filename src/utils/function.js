@@ -1,5 +1,8 @@
+require("dotenv").config();
+
 const bcrypt = require("bcrypt");
 const Place = require("../models/Place.js");
+const axios = require("axios");
 
 const hashPassword = async (password) => {
   try {
@@ -39,8 +42,14 @@ const distanceTwoPoint = (lat1, lon1, lat2, lon2) => {
   return R * c;
 };
 
-const getPlaceInformation = async (type, placeId) => {
+const getPlaceInformation = async (type, placeId, res) => {
   try {
+    const header = {
+      "Accept-Language": "th",
+      "Content-Type": "text/json",
+      Authorization: process.env.TAT_KEY,
+    };
+
     let place = await Place.findOne({ placeId: placeId });
     // if didn't have place in dataBase get from TAT
     if (!place) {

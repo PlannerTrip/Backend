@@ -87,7 +87,7 @@ router.get("/verifyInvitation", async (req, res) => {
     await trip.save();
     // send to socket
 
-    return res.json({ message: "success" });
+    return res.json(trip.member);
   } catch (err) {
     return res.status(400).json({ error: err });
   }

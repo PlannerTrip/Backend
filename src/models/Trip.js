@@ -39,6 +39,7 @@ const TripSchema = new Schema({
     },
   ],
   inviteLink: String,
+  currentStage: { type: String, default: "invitation" },
 });
 
 module.exports = mongoose.model("Trip", TripSchema);

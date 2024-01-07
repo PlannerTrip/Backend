@@ -14,7 +14,6 @@ const {
   getPlaceInformation,
 } = require("../utils/function.js");
 
-const TAT_KEY = process.env.TAT_KEY;
 const TMD_KEY = process.env.TMD_KEY;
 
 const router = express.Router();
@@ -35,13 +34,7 @@ router.get("/information", async (req, res) => {
       return res.status(400).json({ error: "Missing or invalid parameters" });
     }
 
-    const header = {
-      "Accept-Language": "th",
-      "Content-Type": "text/json",
-      Authorization: TAT_KEY,
-    };
-
-    const responsePlace = await getPlaceInformation(type, placeId);
+    const responsePlace = await getPlaceInformation(type, placeId, res);
 
     const checkIns = await CheckIn.find({ placeId: placeId });
     // check did user already checkIn this place?
