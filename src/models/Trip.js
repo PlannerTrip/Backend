@@ -10,16 +10,16 @@ const TripSchema = new Schema({
       userId: String,
       date: [
         {
-          start: { type: Date, default: null },
-          end: { type: Date, default: null },
+          start: { type: String, default: null },
+          end: { type: String, default: null },
         },
       ],
     },
   ],
   place: [{ placeId: String, selectBy: [String] }],
   date: {
-    start: { type: Date, default: null },
-    end: { type: Date, default: null },
+    start: { type: String, default: null },
+    end: { type: String, default: null },
   },
   note: { type: String, default: "" },
   plan: [

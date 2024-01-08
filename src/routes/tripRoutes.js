@@ -142,7 +142,7 @@ router.delete("/member", async (req, res) => {
         .json({ error: `No trip found for tripId: ${tripId}` });
     }
 
-    if (trip.createBy !== userId) {
+    if (trip.createBy !== userId && userId !== friendId) {
       return res.status(403).json({ error: "Permission denied" });
     }
 
@@ -162,6 +162,38 @@ router.delete("/member", async (req, res) => {
     });
 
     res.json({ message: "delete success" });
+  } catch (err) {
+    return res.status(400).json({ error: err });
+  }
+});
+
+router.post("/date", async (req, res) => {
+  try {
+    const { tripId, date } = req.body;
+    const userId = req.user.id;
+    const trip = await Trip.findOne({ tripId: tripId });
+    if (!trip) {
+      return res
+        .status(404)
+        .json({ error: `No trip found for tripId: ${tripId}` });
+    }
+
+    trip.member = trip.member.map((user) => {
+      if (user.userId !== userId) {
+        return user;
+      } else {
+        return { userId: userId, date: date };
+      }
+    });
+    await trip.save();
+    io.to(trip.tripId).emit("updateMember", {
+      type: "updateDate",
+      data: {
+        userId: userId,
+        date: date,
+      },
+    });
+    res.json({ message: "success" });
   } catch (err) {
     return res.status(400).json({ error: err });
   }
