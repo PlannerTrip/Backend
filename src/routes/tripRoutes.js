@@ -178,6 +178,12 @@ router.post("/date", async (req, res) => {
         .json({ error: `No trip found for tripId: ${tripId}` });
     }
 
+    if (!trip.member.some((user) => user === userId)) {
+      return res
+        .status(404)
+        .json({ error: `No userId found for tripId: ${tripId}` });
+    }
+
     trip.member = trip.member.map((user) => {
       if (user.userId !== userId) {
         return user;
