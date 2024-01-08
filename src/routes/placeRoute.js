@@ -8,6 +8,7 @@ const Place = require("../models/Place.js");
 const CheckIn = require("../models/CheckIn.js");
 const Review = require("../models/Review.js");
 const Bookmark = require("../models/Bookmark.js");
+const User = require("../models/User.js");
 
 const {
   distanceTwoPoint,
@@ -72,19 +73,23 @@ router.get("/information", async (req, res) => {
     // get all review of this place
     const review = await Review.find({ placeId: placeId });
 
-    let responseReview = review.map((item) => {
+    let responseReview = [];
+    for (const item of review) {
       alreadyLike = item.likes.some((like) => like.userId === userId);
+      const user = await User.findOne({ id: item.userId });
 
-      return {
+      responseReview.push({
         reviewId: item.reviewId,
         userId: item.userId,
+        username: user.username,
+        profileUrl: user.profileUrl,
         content: item.content,
         img: item.img,
         rating: item.rating,
         totalLike: item.likes.length,
         alreadyLike: alreadyLike,
-      };
-    });
+      });
+    }
 
     const bookmark = await Bookmark.findOne({
       placeId: placeId,

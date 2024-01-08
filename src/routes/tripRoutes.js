@@ -78,16 +78,14 @@ router.get("/verifyInvitation", async (req, res) => {
     }
 
     if (trip.member.some((user) => user.userId === userId)) {
-      return res.status(400).json({
-        error: "You are already join this trip.",
-      });
+      return res.json({ tripId: trip.tripId, member: trip.member });
     }
 
     trip.member = [...trip.member, { userId: userId }];
     await trip.save();
     // send to socket
 
-    return res.json(trip.member);
+    return res.json({ tripId: trip.tripId, member: trip.member });
   } catch (err) {
     return res.status(400).json({ error: err });
   }
@@ -110,6 +108,8 @@ router.get("/information", async (req, res) => {
     }
 
     if (type === "member") {
+      await trip.member.map((user) => {});
+
       return res.json(trip.member);
     } else if (type === "allPlace") {
       // get place information
