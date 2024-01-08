@@ -21,11 +21,6 @@ function setupSocket(server) {
       console.log(`User joined trip: ${tripId}`);
     });
 
-    socket.on("addMember", (data) => {
-      console.log(data);
-      io.to(data.tripId).emit("member", data.newMember);
-    });
-
     // Handle disconnection
     socket.on("disconnect", () => {
       console.log("user disconnected");
@@ -33,4 +28,5 @@ function setupSocket(server) {
   });
   return io;
 }
+
 module.exports = setupSocket;

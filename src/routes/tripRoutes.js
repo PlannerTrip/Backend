@@ -4,7 +4,10 @@ const express = require("express");
 
 const router = express.Router();
 const { v4: uuidv4 } = require("uuid");
+
 const Trip = require("../models/Trip.js");
+const User = require("../models/User.js");
+const io = require("../../index.js");
 
 // create trip
 router.post("/", async (req, res) => {
@@ -78,14 +81,87 @@ router.get("/verifyInvitation", async (req, res) => {
     }
 
     if (trip.member.some((user) => user.userId === userId)) {
-      return res.json({ tripId: trip.tripId, member: trip.member });
+      const responseMember = [];
+      for (const item of trip.member) {
+        const user = await User.findOne({ id: item.userId });
+        responseMember.push({
+          userId: item.userId,
+          username: user.username,
+          profileUrl: user.profileUrl,
+          date: item.date,
+        });
+      }
+      return res.json({ tripId: trip.tripId, member: responseMember });
     }
 
     trip.member = [...trip.member, { userId: userId }];
     await trip.save();
+
+    let newMember = {};
+    const responseMember = [];
+    for (const item of trip.member) {
+      const user = await User.findOne({ id: item.userId });
+      responseMember.push({
+        userId: item.userId,
+        username: user.username,
+        profileUrl: user.profileUrl,
+        date: item.date,
+      });
+    }
+
+    const user = await User.findOne({ id: userId });
+
     // send to socket
 
-    return res.json({ tripId: trip.tripId, member: trip.member });
+    io.to(trip.tripId).emit("updateMember", {
+      type: "addMember",
+      data: {
+        userId: userId,
+        username: user.username,
+        profileUrl: user.profileUrl,
+        date: [],
+      },
+    });
+
+    return res.json({ tripId: trip.tripId, member: responseMember });
+  } catch (err) {
+    return res.status(400).json({ error: err });
+  }
+});
+
+router.delete("/member", async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { friendId, tripId } = req.body;
+
+    // find trip
+    const trip = await Trip.findOne({ tripId, tripId });
+    if (!trip) {
+      return res
+        .status(404)
+        .json({ error: `No trip found for tripId: ${tripId}` });
+    }
+
+    if (trip.createBy !== userId) {
+      return res.status(403).json({ error: "Permission denied" });
+    }
+
+    if (!trip.member.some((user) => user === friendId)) {
+      return res
+        .status(404)
+        .json({ error: `No friendId found for tripId: ${tripId}` });
+    }
+
+    // remove member and update trip member
+    trip.member = trip.member.filter((user) => user.userId !== friendId);
+    await trip.save();
+
+    io.to(trip.tripId).emit("updateMember", {
+      type: "delete",
+      data: { deleteId: friendId },
+    });
+
+    res.json({ message: "delete success" });
   } catch (err) {
     return res.status(400).json({ error: err });
   }
@@ -108,9 +184,18 @@ router.get("/information", async (req, res) => {
     }
 
     if (type === "member") {
-      await trip.member.map((user) => {});
+      let responseMember = [];
+      for (const item of trip.member) {
+        const user = await User.findOne({ id: item.userId });
+        responseMember.push({
+          userId: item.userId,
+          username: user.username,
+          profileUrl: user.profileUrl,
+          date: item.date,
+        });
+      }
 
-      return res.json(trip.member);
+      return res.json(responseMember);
     } else if (type === "allPlace") {
       // get place information
       return res.json(trip.place);
@@ -122,6 +207,7 @@ router.get("/information", async (req, res) => {
       return res.json(trip);
     }
   } catch (err) {
+    console.log(err);
     return res.status(400).json({ error: err });
   }
 });
