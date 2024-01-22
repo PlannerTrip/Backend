@@ -30,6 +30,9 @@
     {
       "name": "Review",
       "description": ""
+    },
+    {
+      "name": "Trip"
     }
   ],
   "paths": {
@@ -79,94 +82,7 @@
           "200": {
             "description": "Successful response",
             "content": {
-              "application/json": {
-                "example": {
-                  "contact": {
-                    "phone": null,
-                    "url": null
-                  },
-                  "location": {
-                    "address": "",
-                    "district": "สาทร",
-                    "province": "กรุงเทพมหานคร"
-                  },
-                  "_id": "6586e6a332bcc1af3a85da97",
-                  "placeId": "P08000001",
-                  "placeName": "อัลโดส์",
-                  "type": "RESTAURANT",
-                  "coverImg": [
-                    "https://tatapi.tourismthailand.org/tatfs/Image/CustomPOI/Picture/P08000001_1.jpeg"
-                  ],
-                  "introduction": "",
-                  "tag": [
-                    "จัดเลี้ยงบริษัท",
-                    "ดินเนอร์แบบทางการ",
-                    "ผับและบาร์",
-                    "โรแมนติก เดตแรก"
-                  ],
-                  "latitude": 13.72042,
-                  "longitude": 100.528338,
-                  "weekDay": {
-                    "day1": null,
-                    "day2": null,
-                    "day3": null,
-                    "day4": null,
-                    "day5": null,
-                    "day6": null,
-                    "day7": null,
-                    "_id": "6586e6a332bcc1af3a85da98"
-                  },
-                  "__v": 0,
-                  "totalCheckIn": 0,
-                  "alreadyCheckIn": false,
-                  "forecasts": [
-                    {
-                      "time": "2024-01-04T00:00:00+07:00",
-                      "data": {
-                        "cond": 1,
-                        "rh": 40.06,
-                        "tc": 31.16
-                      }
-                    },
-                    {
-                      "time": "2024-01-05T00:00:00+07:00",
-                      "data": {
-                        "cond": 1,
-                        "rh": 51.03,
-                        "tc": 29.59
-                      }
-                    }
-                  ],
-                  "review": [
-                    {
-                      "reviewId": "7d70808b-01fe-454e-bc87-d7ecb95968c0",
-                      "userId": "58dfb372-c190-4690-a156-66495cb6c1df",
-                      "content": "ดีมากเลยครับ",
-                      "img": [
-                        {
-                          "url": "https://firebasestorage.googleapis.com/v0/b/tripplaner-abdbe.appspot.com/o/1704276574223_e148d44bfa2728a2a1ba0f83.png?alt=media&token=1704276574235",
-                          "fileName": "1704276574223_e148d44bfa2728a2a1ba0f83.png",
-                          "_id": "6595325e6933230caf1343c3"
-                        },
-                        {
-                          "url": "https://firebasestorage.googleapis.com/v0/b/tripplaner-abdbe.appspot.com/o/1704276574232_10330213cab5fd9a57bd16b4.jpg?alt=media&token=1704276574235",
-                          "fileName": "1704276574232_10330213cab5fd9a57bd16b4.jpg",
-                          "_id": "6595325e6933230caf1343c4"
-                        },
-                        {
-                          "url": "https://firebasestorage.googleapis.com/v0/b/tripplaner-abdbe.appspot.com/o/1704276574234_1886f2ad6cc1003b8deafbf6.jpg?alt=media&token=1704276574235",
-                          "fileName": "1704276574234_1886f2ad6cc1003b8deafbf6.jpg",
-                          "_id": "6595325e6933230caf1343c5"
-                        }
-                      ],
-                      "rating": 4,
-                      "totalLike": 1,
-                      "alreadyLike": true
-                    }
-                  ],
-                  "alreadyBookmark": true
-                }
-              }
+              "application/json": {}
             }
           }
         }
@@ -590,6 +506,411 @@
               "application/json": {
                 "example": {
                   "error": "No review found for reviewId: {reviewId}"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/trip": {
+      "post": {
+        "summary": "Create a new trip",
+        "tags": ["Trip"],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {},
+                "required": []
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "tripId": "generated_trip_id"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": "Error message"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Delete a trip",
+        "tags": ["Trip"],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "tripId": {
+                    "type": "string",
+                    "description": "The ID of the trip to be deleted"
+                  }
+                },
+                "required": ["tripId"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "success"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Trip not found",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": "Can't delete trip"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": "Error message"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/trip/verifyInvitation": {
+      "get": {
+        "summary": "Verify invitation",
+        "tags": ["Trip"],
+        "parameters": [
+          {
+            "name": "inviteLink",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Invitation link for the trip"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "tripId": "generated_trip_id",
+                  "currentStage": "current_stage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": "Error message"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Trip not found",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": "No trip found for inviteLink"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/trip/member": {
+      "delete": {
+        "summary": "Remove member from trip",
+        "tags": ["Trip"],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "friendId": {
+                    "type": "string",
+                    "description": "ID of the member to be removed"
+                  },
+                  "tripId": {
+                    "type": "string",
+                    "description": "ID of the trip"
+                  }
+                },
+                "required": ["friendId", "tripId"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "delete success"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": "Error message"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Permission denied",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": "Permission denied"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Member not found",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": "No friendId found for tripId"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/trip/dateMember": {
+      "post": {
+        "summary": "Update member date in trip",
+        "tags": ["Trip"],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "tripId": {
+                    "type": "string",
+                    "description": "ID of the trip"
+                  },
+                  "date": {
+                    "type": "string",
+                    "description": "Date to be updated for the member"
+                  }
+                },
+                "required": ["tripId", "date"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "success"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": "Error message"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Trip not found",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": "No trip found for tripId"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/trip/date": {
+      "post": {
+        "summary": "Update date in trip and Update state to placeSelect",
+        "tags": ["Trip"],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "tripId": {
+                    "type": "string",
+                    "description": "ID of the trip"
+                  },
+                  "start": {
+                    "type": "string",
+                    "description": "Start date of the trip"
+                  },
+                  "end": {
+                    "type": "string",
+                    "description": "End date of the trip"
+                  }
+                },
+                "required": ["tripId", "start", "end"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "success"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": "Error message"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Permission denied",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": "Permission denied"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Trip not found",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": "No trip found for tripId"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+
+    "/trip/information": {
+      "get": {
+        "summary": "Get information about the trip",
+        "tags": ["Trip"],
+        "parameters": [
+          {
+            "name": "type",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": ["member", "allPlace", "allPlaceForEachDate", "all"]
+            },
+            "description": "Type of information to be retrieved"
+          },
+          {
+            "name": "tripId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            },
+            "description": "ID of the trip"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {}
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": "Error message"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Permission denied",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": "Permission denied"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Trip not found",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": "No trip found for tripId"
                 }
               }
             }

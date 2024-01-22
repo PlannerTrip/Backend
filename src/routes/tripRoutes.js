@@ -8,6 +8,7 @@ const { v4: uuidv4 } = require("uuid");
 const Trip = require("../models/Trip.js");
 const User = require("../models/User.js");
 const io = require("../../index.js");
+const Place = require("../models/Place.js");
 
 // create trip
 router.post("/", async (req, res) => {
@@ -81,33 +82,12 @@ router.get("/verifyInvitation", async (req, res) => {
     }
 
     if (trip.member.some((user) => user.userId === userId)) {
-      const responseMember = [];
-      for (const item of trip.member) {
-        const user = await User.findOne({ id: item.userId });
-        responseMember.push({
-          userId: item.userId,
-          username: user.username,
-          profileUrl: user.profileUrl,
-          date: item.date,
-        });
-      }
-      return res.json({ tripId: trip.tripId, member: responseMember });
+      return res.json({ currentStage: trip.currentStage, tripId: trip.tripId });
     }
 
+    // add new member to backend
     trip.member = [...trip.member, { userId: userId }];
     await trip.save();
-
-    let newMember = {};
-    const responseMember = [];
-    for (const item of trip.member) {
-      const user = await User.findOne({ id: item.userId });
-      responseMember.push({
-        userId: item.userId,
-        username: user.username,
-        profileUrl: user.profileUrl,
-        date: item.date,
-      });
-    }
 
     const user = await User.findOne({ id: userId });
 
@@ -123,19 +103,20 @@ router.get("/verifyInvitation", async (req, res) => {
       },
     });
 
-    return res.json({ tripId: trip.tripId, member: responseMember });
+    return res.json({ tripId: trip.tripId, currentStage: trip.currentStage });
   } catch (err) {
     return res.status(400).json({ error: err });
   }
 });
 
+// remove member from trip
 router.delete("/member", async (req, res) => {
   try {
     const userId = req.user.id;
     const { friendId, tripId } = req.body;
 
     // find trip
-    const trip = await Trip.findOne({ tripId, tripId });
+    const trip = await Trip.findOne({ tripId: tripId });
     if (!trip) {
       return res
         .status(404)
@@ -167,7 +148,8 @@ router.delete("/member", async (req, res) => {
   }
 });
 
-router.post("/date", async (req, res) => {
+// update member date in trip
+router.post("/dateMember", async (req, res) => {
   try {
     const { tripId, date } = req.body;
     const userId = req.user.id;
@@ -205,6 +187,61 @@ router.post("/date", async (req, res) => {
   }
 });
 
+// update date in trip
+router.post("/date", async (req, res) => {
+  try {
+    const { tripId, start, end } = req.body;
+    const userId = req.user.id;
+
+    // find trip
+    const trip = await Trip.findOne({ tripId: tripId });
+    if (!trip) {
+      return res
+        .status(404)
+        .json({ error: `No trip found for tripId: ${tripId}` });
+    }
+
+    // only creator can update date and go to next stage
+    if (trip.createBy !== userId) {
+      return res.status(403).json({ error: "Permission denied" });
+    }
+
+    trip.date = { start: start, end: end };
+    trip.currentStage = "placeSelect";
+    await trip.save();
+
+    return res.json({ message: "success" });
+  } catch (err) {
+    return res.status(400).json({ error: err });
+  }
+});
+
+// add place to trip
+router.post("/place", async (req, res) => {
+  const { tripId, placeId } = req.body;
+  const userId = req.user.id;
+
+  // find trip
+  const trip = await Trip.findOne({ tripId: tripId });
+  if (!trip) {
+    return res
+      .status(404)
+      .json({ error: `No trip found for tripId: ${tripId}` });
+  }
+
+  const place = await Place.findOne({ placeId: placeId });
+  if (!place) {
+    return res
+      .status(404)
+      .json({ error: `No place found for tripId: ${placeId}` });
+  }
+  // add place and save
+  try {
+  } catch (err) {
+    return res.status(400).json({ error: err });
+  }
+});
+
 // get information
 router.get("/information", async (req, res) => {
   try {
@@ -221,6 +258,9 @@ router.get("/information", async (req, res) => {
       return res.status(403).json({ error: "Permission denied" });
     }
 
+    // check owner
+    const owner = trip.createBy === userId;
+
     if (type === "member") {
       let responseMember = [];
       for (const item of trip.member) {
@@ -233,9 +273,14 @@ router.get("/information", async (req, res) => {
         });
       }
 
-      return res.json(responseMember);
+      return res.json({
+        owner: owner,
+        data: responseMember,
+      });
     } else if (type === "allPlace") {
       // get place information
+      // name img introduction selectBy forecast tag provine distict
+
       return res.json(trip.place);
     } else if (type === "allPlaceForEachDate") {
       // get place information
