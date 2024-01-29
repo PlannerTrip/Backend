@@ -18,7 +18,7 @@ router.post("/", async (req, res) => {
     await Trip.create({
       tripId: tripId,
       createBy: userId,
-      member: [{ userId: userId }],
+      member: [{ userId: userId, date: [{ start: "", end: "" }] }],
       inviteLink: uuidv4(),
     });
     return res.json({ tripId: tripId });
@@ -41,6 +41,10 @@ router.delete("/", async (req, res) => {
     if (!trip) {
       return res.status(404).json({ error: "can't delete trip" });
     }
+
+    io.to(trip.tripId).emit("removeGroup", {
+      status: "removeGroup",
+    });
     return res.json({ message: "success" });
   } catch (err) {
     return res.status(400).json({ error: err });
@@ -71,22 +75,23 @@ router.get("/verifyInvitation", async (req, res) => {
     const userId = req.user.id;
     const trip = await Trip.findOne({ inviteLink: inviteLink });
     if (!trip) {
-      return res
-        .status(404)
-        .json({ error: `No trip found for inviteLink: ${inviteLink}` });
+      return res.status(404).json({ error: `invalidInviteLink` });
     }
-    if (trip.member.length >= 4) {
-      return res.status(400).json({
-        error: "The trip is already at maximum capacity (4 members).",
-      });
-    }
-
     if (trip.member.some((user) => user.userId === userId)) {
       return res.json({ currentStage: trip.currentStage, tripId: trip.tripId });
     }
 
+    if (trip.member.length >= 4) {
+      return res.status(400).json({
+        error: "maximumCapacity",
+      });
+    }
+
     // add new member to backend
-    trip.member = [...trip.member, { userId: userId }];
+    trip.member = [
+      ...trip.member,
+      { userId: userId, date: [{ start: "", end: "" }] },
+    ];
     await trip.save();
 
     const user = await User.findOne({ id: userId });
@@ -99,7 +104,7 @@ router.get("/verifyInvitation", async (req, res) => {
         userId: userId,
         username: user.username,
         profileUrl: user.profileUrl,
-        date: [],
+        date: [{ start: "", end: "" }],
       },
     });
 
@@ -127,7 +132,7 @@ router.delete("/member", async (req, res) => {
       return res.status(403).json({ error: "Permission denied" });
     }
 
-    if (!trip.member.some((user) => user === friendId)) {
+    if (!trip.member.some((user) => user.userId === friendId)) {
       return res
         .status(404)
         .json({ error: `No friendId found for tripId: ${tripId}` });
@@ -137,9 +142,8 @@ router.delete("/member", async (req, res) => {
     trip.member = trip.member.filter((user) => user.userId !== friendId);
     await trip.save();
 
-    io.to(trip.tripId).emit("updateMember", {
-      type: "delete",
-      data: { deleteId: friendId },
+    io.to(trip.tripId).emit("removeMember", {
+      userId: friendId,
     });
 
     res.json({ message: "delete success" });

@@ -62,7 +62,7 @@ router.post("/register", async (req, res, next) => {
 });
 
 router.get("/authCheck", (req, res) => {
-  return res.status(204).send();
+  return res.json({ userId: req.user.id });
 });
 
 module.exports = router;
