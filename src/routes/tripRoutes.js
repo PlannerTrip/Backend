@@ -98,8 +98,7 @@ router.get("/verifyInvitation", async (req, res) => {
 
     // send to socket
 
-    io.to(trip.tripId).emit("updateMember", {
-      type: "addMember",
+    io.to(trip.tripId).emit("addMember", {
       data: {
         userId: userId,
         username: user.username,
@@ -158,13 +157,15 @@ router.post("/dateMember", async (req, res) => {
     const { tripId, date } = req.body;
     const userId = req.user.id;
     const trip = await Trip.findOne({ tripId: tripId });
+    // Is trip found
     if (!trip) {
       return res
         .status(404)
         .json({ error: `No trip found for tripId: ${tripId}` });
     }
 
-    if (!trip.member.some((user) => user === userId)) {
+    // Is member found
+    if (!trip.member.some((user) => user.userId === userId)) {
       return res
         .status(404)
         .json({ error: `No userId found for tripId: ${tripId}` });
@@ -178,12 +179,9 @@ router.post("/dateMember", async (req, res) => {
       }
     });
     await trip.save();
-    io.to(trip.tripId).emit("updateMember", {
-      type: "updateDate",
-      data: {
-        userId: userId,
-        date: date,
-      },
+    io.to(trip.tripId).emit("updateDate", {
+      userId: userId,
+      date: date,
     });
     res.json({ message: "success" });
   } catch (err) {
