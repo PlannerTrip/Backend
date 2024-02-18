@@ -24,12 +24,12 @@ const TripSchema = new Schema({
   note: { type: String, default: "" },
   plan: [
     {
-      date: Date,
+      date: String,
       name: String,
+      day: Number,
       place: [
         {
           placeId: String,
-          day: String,
           startTime: String,
           endTime: String,
           selectBy: [String],
@@ -39,6 +39,7 @@ const TripSchema = new Schema({
     },
   ],
   inviteLink: String,
+  // invitation placeSelect
   currentStage: { type: String, default: "invitation" },
 });
 

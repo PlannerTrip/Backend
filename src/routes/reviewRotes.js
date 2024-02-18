@@ -32,6 +32,7 @@ const uploadFirebase = multer({
   },
 });
 
+// create review
 router.post("/", uploadFirebase.array("files", 5), async (req, res) => {
   try {
     const { rating, content, placeId } = req.body;
@@ -86,6 +87,7 @@ router.post("/", uploadFirebase.array("files", 5), async (req, res) => {
   }
 });
 
+// delete review
 router.delete("/delete", async (req, res) => {
   try {
     const reviewId = req.body.reviewId;
@@ -117,6 +119,7 @@ router.delete("/delete", async (req, res) => {
   }
 });
 
+// like review
 router.post("/like", async (req, res) => {
   try {
     const reviewId = req.body.reviewId;

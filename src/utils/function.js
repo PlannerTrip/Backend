@@ -4,6 +4,8 @@ const bcrypt = require("bcrypt");
 const Place = require("../models/Place.js");
 const axios = require("axios");
 
+const TMD_KEY = process.env.TMD_KEY;
+
 const hashPassword = async (password) => {
   try {
     const saltRounds = 10;
@@ -42,6 +44,7 @@ const distanceTwoPoint = (lat1, lon1, lat2, lon2) => {
   return R * c;
 };
 
+// get place information if place did not in database get in from TAT
 const getPlaceInformation = async (type, placeId, res) => {
   try {
     const header = {
@@ -111,9 +114,33 @@ const getPlaceInformation = async (type, placeId, res) => {
   }
 };
 
+const getForecast = async (province, district, formattedDate, duration) => {
+  try {
+    const TMD_response = await axios(
+      "https://data.tmd.go.th/nwpapi/v1/forecast/location/daily/place",
+      {
+        params: {
+          province: province,
+          amphoe: district,
+          date: formattedDate,
+          duration: duration,
+        },
+        headers: {
+          accept: "application/json",
+          authorization: TMD_KEY,
+        },
+      }
+    );
+    return TMD_response;
+  } catch (err) {
+    return res.status(400).json({ error: "error with tmd api" });
+  }
+};
+
 module.exports = {
   hashPassword,
   comparePasswords,
   distanceTwoPoint,
   getPlaceInformation,
+  getForecast,
 };

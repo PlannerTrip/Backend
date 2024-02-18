@@ -16,13 +16,16 @@ const router = express.Router();
 router.post("/login", async (req, res) => {
   try {
     const user = await User.findOne({ username: req.body.username });
-    if (!user) {
-      return res.status(401).json({ error: "no user in database" });
-    }
+
     const isMatch = await comparePasswords(
       req.body.password.toString(),
       user.password
     );
+    if (!isMatch || !user) {
+      return res
+        .status(404)
+        .json({ error: "wrong password or user not found" });
+    }
     if (isMatch) {
       const payload = {
         id: user.id,
@@ -34,7 +37,6 @@ router.post("/login", async (req, res) => {
 
       return res.status(200).json({ message: "login success", token: token });
     }
-    return res.status(404).json({ error: "wrong password" });
   } catch (err) {
     return res
       .status(500)

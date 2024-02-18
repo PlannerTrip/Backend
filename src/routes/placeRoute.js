@@ -9,10 +9,12 @@ const CheckIn = require("../models/CheckIn.js");
 const Review = require("../models/Review.js");
 const Bookmark = require("../models/Bookmark.js");
 const User = require("../models/User.js");
+const Trip = require("../models/Trip.js");
 
 const {
   distanceTwoPoint,
   getPlaceInformation,
+  getForecast,
 } = require("../utils/function.js");
 
 const TMD_KEY = process.env.TMD_KEY;
@@ -53,20 +55,11 @@ router.get("/information", async (req, res) => {
     const dateValue = date.format(now, "YYYY-MM-DD");
     let TMD_response = null;
     if (forecastDate && forecastDuration) {
-      TMD_response = await axios(
-        "https://data.tmd.go.th/nwpapi/v1/forecast/location/daily/place",
-        {
-          params: {
-            province: responsePlace.location.province,
-            amphoe: responsePlace.location.district,
-            date: forecastDate,
-            duration: forecastDuration,
-          },
-          headers: {
-            accept: "application/json",
-            authorization: TMD_KEY,
-          },
-        }
+      TMD_response = await getForecast(
+        responsePlace.location.province,
+        responsePlace.location.district,
+        forecastDate,
+        forecastDuration
       );
     }
 
@@ -168,6 +161,7 @@ router.post("/checkIn", async (req, res) => {
   }
 });
 
+// bookmark place or unBookmark
 router.post("/bookmark", async (req, res) => {
   try {
     const placeId = req.body.placeId;
@@ -207,15 +201,117 @@ router.post("/bookmark", async (req, res) => {
 
 router.get("/bookmark", async (req, res) => {
   try {
-    const tripId = req.query.tripId;
+    // 2 type have tripId and have not
+
+    const { tripId } = req.query;
     const userId = req.user.id;
-    const bookmark = await Bookmark.find({ userId: userId });
+    const bookmarks = await Bookmark.find({ userId: userId });
+
     const places = [];
-    await bookmark.forEach(async (item) => {
-      const place = await Place.find({ placeId: item.placeId });
-      // รอ TripId
-    });
+    if (tripId) {
+      const trip = await Trip.findOne({ tripId: tripId });
+      if (!trip) {
+        return res
+          .status(404)
+          .json({ error: `No trip found for tripId: ${tripId}` });
+      }
+      let date = new Date(trip.date.start);
+      if (Date.now() > date) {
+        date = Date.now();
+      }
+
+      // Convert the date to the desired format (YYYY-MM-DD)
+      const formattedDate =
+        date.getFullYear() +
+        "-" +
+        ("0" + (date.getMonth() + 1)).slice(-2) +
+        "-" +
+        ("0" + date.getDate()).slice(-2);
+
+      for (const item of bookmarks) {
+        const place = await Place.findOne({ placeId: item.placeId });
+        // get forecast
+        const TMD_response = await getForecast(
+          place.location.province,
+          place.location.district,
+          formattedDate,
+          5
+        );
+
+        places.push({
+          ...place.toObject(),
+          forecasts: TMD_response
+            ? TMD_response.data.WeatherForecasts[0].forecasts
+            : [],
+          alreadyAdd: trip.place.some(
+            (placeInTrip) =>
+              placeInTrip.placeId === place.placeId &&
+              placeInTrip.selectBy.some((member) => member === userId)
+          ),
+        });
+      }
+    }
+
+    return res.json(places);
   } catch (err) {
+    // console.log(err);
+    return res.status(400).json({ error: err });
+  }
+});
+
+// get recommend place
+router.get("/recommend", async (req, res) => {
+  try {
+    const { tripId } = req.query;
+    const userId = req.user.id;
+
+    const placeIdList = ["P08000001", "P02000001", "P03000001", "P08000003"];
+    const trip = await Trip.findOne({ tripId: tripId });
+
+    if (!trip) {
+      return res
+        .status(404)
+        .json({ error: `No trip found for tripId: ${tripId}` });
+    }
+    let date = new Date(trip.date.start);
+    if (Date.now() > date) {
+      date = Date.now();
+    }
+
+    const places = [];
+    // Convert the date to the desired format (YYYY-MM-DD)
+    const formattedDate =
+      date.getFullYear() +
+      "-" +
+      ("0" + (date.getMonth() + 1)).slice(-2) +
+      "-" +
+      ("0" + date.getDate()).slice(-2);
+
+    for (const placeId of placeIdList) {
+      const place = await Place.findOne({ placeId: placeId });
+      // get forecast
+      const TMD_response = await getForecast(
+        place.location.province,
+        place.location.district,
+        formattedDate,
+        5
+      );
+
+      places.push({
+        ...place.toObject(),
+        forecasts: TMD_response
+          ? TMD_response.data.WeatherForecasts[0].forecasts
+          : [],
+        alreadyAdd: trip.place.some(
+          (placeInTrip) =>
+            placeInTrip.placeId === place.placeId &&
+            placeInTrip.selectBy.some((member) => member === userId)
+        ),
+      });
+    }
+    return res.json(places);
+  } catch (err) {
+    console.log(err);
     return res.status(400).json({ error: err });
   }
 });

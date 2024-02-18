@@ -1,6 +1,7 @@
 require("dotenv").config();
 
 const express = require("express");
+const axios = require("axios");
 
 const router = express.Router();
 const { v4: uuidv4 } = require("uuid");
@@ -9,6 +10,9 @@ const Trip = require("../models/Trip.js");
 const User = require("../models/User.js");
 const io = require("../../index.js");
 const Place = require("../models/Place.js");
+const { getForecast } = require("../utils/function.js");
+
+const TMD_KEY = process.env.TMD_KEY;
 
 // create trip
 router.post("/", async (req, res) => {
@@ -204,12 +208,14 @@ router.post("/date", async (req, res) => {
     }
 
     // only creator can update date and go to next stage
-    if (trip.createBy !== userId) {
-      return res.status(403).json({ error: "Permission denied" });
-    }
+    // if (trip.createBy !== userId) {
+    //   return res.status(403).json({ error: "Permission denied" });
+    // }
 
     trip.date = { start: start, end: end };
-    trip.currentStage = "placeSelect";
+    // trip.currentStage = "placeSelect";
+
+    io.to(tripId).emit("updateTripDate", { start: start, end: end });
     await trip.save();
 
     return res.json({ message: "success" });
@@ -218,7 +224,7 @@ router.post("/date", async (req, res) => {
   }
 });
 
-// add place to trip
+// add place to trip or remove in selectBy
 router.post("/place", async (req, res) => {
   const { tripId, placeId } = req.body;
   const userId = req.user.id;
@@ -231,15 +237,164 @@ router.post("/place", async (req, res) => {
       .json({ error: `No trip found for tripId: ${tripId}` });
   }
 
+  // find place
   const place = await Place.findOne({ placeId: placeId });
   if (!place) {
     return res
       .status(404)
       .json({ error: `No place found for tripId: ${placeId}` });
   }
-  // add place and save
+  let updatePlace = [];
+
+  // check did user already add this place?
+  if (
+    trip.place.some(
+      (item) =>
+        item.placeId === placeId &&
+        item.selectBy.some((member) => member === userId)
+    )
+  ) {
+    // remove that person from selectBy
+    updatePlace = trip.place.map((item) => {
+      if (
+        item.placeId === placeId &&
+        item.selectBy.some((member) => member === userId)
+      ) {
+        return {
+          ...item,
+          selectBy: item.selectBy.filter((member) => member != userId),
+        };
+      }
+
+      return item;
+    });
+
+    // if place selectBy empty remove that place
+    updatePlace = updatePlace.filter((item) => item.selectBy.length !== 0);
+  } else {
+    // already have place add selectBy
+    if (trip.place.some((item) => item.placeId === placeId)) {
+      updatePlace = trip.place.map((item) => {
+        if (item.placeId === placeId) {
+          return { ...item, selectBy: [...item.selectBy, userId] };
+        }
+        return item;
+      });
+    } else {
+      // have not place add new place
+      updatePlace = [...trip.place, { placeId: placeId, selectBy: [userId] }];
+    }
+  }
+  trip.place = updatePlace;
+  await trip.save();
+
+  // send to socket
+  io.to(trip.tripId).emit("updatePlace", {
+    data: updatePlace,
+  });
+
+  res.json("success");
   try {
   } catch (err) {
+    return res.status(400).json({ error: err });
+  }
+});
+
+// remove place in trip
+
+router.delete("/place", async (req, res) => {
+  try {
+    const { tripId, placeId } = req.body;
+    const userId = req.user.id;
+    // find trip
+    const trip = await Trip.findOne({ tripId: tripId });
+    if (!trip) {
+      return res
+        .status(404)
+        .json({ error: `No trip found for tripId: ${tripId}` });
+    }
+
+    // find place
+    const place = await Place.findOne({ placeId: placeId });
+    if (!place) {
+      return res
+        .status(404)
+        .json({ error: `No place found for tripId: ${placeId}` });
+    }
+
+    if (trip.createBy !== userId) {
+      return res.status(404).json({ error: "Permission denied" });
+    }
+    // remove place
+    trip.place = trip.place.filter(
+      (placeInTrip) => placeInTrip.placeId !== placeId
+    );
+
+    // remove form plan
+    trip.plan = trip.plan.map((item) =>
+      item.place.filter((value) => value.placeId !== placeId)
+    );
+
+    // socket sent
+    io.to(trip.tripId).emit("updatePlace", {
+      data: trip.place,
+    });
+
+    await trip.save();
+
+    return res.json({ message: "remove success" });
+  } catch (err) {
+    return res.status(400).json({ error: err });
+  }
+});
+
+// update stage
+router.post("/stage", async (req, res) => {
+  try {
+    const { tripId, stage } = req.body;
+    const userId = req.user.id;
+
+    const trip = await Trip.findOne({ tripId: tripId });
+    // Is trip found
+    if (!trip) {
+      return res
+        .status(404)
+        .json({ error: `No trip found for tripId: ${tripId}` });
+    }
+
+    if (trip.createBy !== userId) {
+      return res.status(403).json({ error: "Permission denied" });
+    }
+
+    // create trip plan from date start,end
+    if (trip.currentStage === "invitation" && stage === "placeSelect") {
+      const start = new Date(trip.date.start);
+      const end = new Date(trip.date.end);
+      const datesBetween = [];
+
+      let currentDate = new Date(start);
+      datesBetween.push(currentDate.toDateString());
+      currentDate.setDate(currentDate.getDate() + 1);
+
+      // Loop until the current date reaches the end date
+      while (currentDate <= end) {
+        datesBetween.push(currentDate.toDateString());
+        currentDate.setDate(currentDate.getDate() + 1);
+      }
+
+      trip.plan = datesBetween.map((date, index) => {
+        return { date: date, place: [], day: index, activity: [] };
+      });
+    }
+
+    trip.currentStage = stage;
+    await trip.save();
+
+    io.to(tripId).emit("updateStage", {
+      stage: stage,
+    });
+  } catch (err) {
+    console.log(err);
     return res.status(400).json({ error: err });
   }
 });
@@ -278,12 +433,45 @@ router.get("/information", async (req, res) => {
       return res.json({
         owner: owner,
         data: responseMember,
+        date: trip.date,
       });
     } else if (type === "allPlace") {
-      // get place information
-      // name img introduction selectBy forecast tag provine distict
+      const places = [];
 
-      return res.json(trip.place);
+      let date = new Date(trip.date.start);
+      
+      if (Date.now() > date) {
+        date = Date.now();
+      }
+
+      // Convert the date to the desired format (YYYY-MM-DD)
+      const formattedDate =
+        date.getFullYear() +
+        "-" +
+        ("0" + (date.getMonth() + 1)).slice(-2) +
+        "-" +
+        ("0" + date.getDate()).slice(-2);
+
+      for (const item of trip.place) {
+        const place = await Place.findOne({ placeId: item.placeId });
+        // get forecast
+
+        const TMD_response = await getForecast(
+          place.location.province,
+          place.location.district,
+          formattedDate,
+          5
+        );
+
+        places.push({
+          ...place.toObject(),
+          forecasts: TMD_response
+            ? TMD_response.data.WeatherForecasts[0].forecasts
+            : [],
+        });
+      }
+
+      return res.json({ places: places, owner: owner });
     } else if (type === "allPlaceForEachDate") {
       // get place information
       return res.json({ place: trip.place, plan: trip.plan });
