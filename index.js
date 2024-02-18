@@ -23,7 +23,14 @@ module.exports = io;
 
 const MONGODB_URI = process.env.MONGODB_URI;
 
-const publicPaths = ["/login", "/register", "/docs/"];
+const publicPaths = [
+  "/login",
+  "/register",
+  "/docs/",
+  "/forgotPassword",
+  "/verifyForgotCode",
+  "/changePasswordByEmail",
+];
 
 // ==================== middleware ====================
 app.use("/docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument));

@@ -5,7 +5,7 @@ const UserSchema = new Schema({
   username: String,
   password: String,
   email: String,
-  gender: String,
+  gender: { type: String, default: "" },
   id: String,
   profileUrl: { type: String, default: "" },
 });
