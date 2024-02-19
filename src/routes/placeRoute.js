@@ -76,6 +76,7 @@ router.get("/information", async (req, res) => {
         userId: item.userId,
         username: user.username,
         profileUrl: user.profileUrl,
+        createDate: item.createDate,
         content: item.content,
         img: item.img,
         rating: item.rating,

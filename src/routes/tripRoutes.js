@@ -224,6 +224,7 @@ router.post("/date", async (req, res) => {
   }
 });
 
+// sent forecast in socket
 // add place to trip or remove in selectBy
 router.post("/place", async (req, res) => {
   const { tripId, placeId } = req.body;
@@ -245,7 +246,7 @@ router.post("/place", async (req, res) => {
       .json({ error: `No place found for tripId: ${placeId}` });
   }
   let updatePlace = [];
-
+  const tripPlaceLength = trip.place.length;
   // check did user already add this place?
   if (
     trip.place.some(
@@ -288,10 +289,55 @@ router.post("/place", async (req, res) => {
   trip.place = updatePlace;
   await trip.save();
 
-  // send to socket
-  io.to(trip.tripId).emit("updatePlace", {
-    data: updatePlace,
-  });
+  // sent socket
+
+  if (tripPlaceLength < updatePlace.length) {
+    // place add
+    let date = new Date(trip.date.start);
+
+    if (Date.now() > date) {
+      date = Date.now();
+    }
+
+    const formattedDate =
+      date.getFullYear() +
+      "-" +
+      ("0" + (date.getMonth() + 1)).slice(-2) +
+      "-" +
+      ("0" + date.getDate()).slice(-2);
+
+    const TMD_response = await getForecast(
+      place.location.province,
+      place.location.district,
+      formattedDate,
+      5
+    );
+
+    io.to(trip.tripId).emit("addPlace", {
+      place: {
+        ...place.toObject(),
+        forecasts: TMD_response
+          ? TMD_response.data.WeatherForecasts[0].forecasts
+          : [],
+      },
+    });
+  } else if (tripPlaceLength > updatePlace.length) {
+    // place remove
+    io.to(trip.tripId).emit("removePlace", {
+      placeId: placeId,
+    });
+  } else if (tripPlaceLength === updatePlace.length) {
+    // update selectBy
+    io.to(trip.tripId).emit("updatePlace", {
+      placeId: placeId,
+      selectBy: updatePlace.reduce((result, current) => {
+        if (current.placeId === placeId) {
+          return current.selectBy;
+        }
+        return result;
+      }, []),
+    });
+  }
 
   res.json("success");
   try {
@@ -301,7 +347,7 @@ router.post("/place", async (req, res) => {
 });
 
 // remove place in trip
-
+// sent id in socket
 router.delete("/place", async (req, res) => {
   try {
     const { tripId, placeId } = req.body;
@@ -336,8 +382,8 @@ router.delete("/place", async (req, res) => {
     );
 
     // socket sent
-    io.to(trip.tripId).emit("updatePlace", {
-      data: trip.place,
+    io.to(trip.tripId).emit("removePlace", {
+      placeId: placeId,
     });
 
     await trip.save();
@@ -439,9 +485,9 @@ router.get("/information", async (req, res) => {
       const places = [];
 
       let date = new Date(trip.date.start);
-      
-      if (Date.now() > date) {
-        date = Date.now();
+
+      if (new Date(Date.now()) > date) {
+        date = new Date(Date.now());
       }
 
       // Convert the date to the desired format (YYYY-MM-DD)
