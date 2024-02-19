@@ -78,7 +78,7 @@ router.get("/information", async (req, res) => {
         profileUrl: user.profileUrl,
         createDate: item.createDate,
         content: item.content,
-        img: item.img,
+        img: item.img.map((item) => item.url),
         rating: item.rating,
         totalLike: item.likes.length,
         alreadyLike: alreadyLike,
@@ -217,8 +217,8 @@ router.get("/bookmark", async (req, res) => {
           .json({ error: `No trip found for tripId: ${tripId}` });
       }
       let date = new Date(trip.date.start);
-      if (Date.now() > date) {
-        date = Date.now();
+      if (new Date(Date.now()) > date) {
+        date = new Date(Date.now());
       }
 
       // Convert the date to the desired format (YYYY-MM-DD)
@@ -275,8 +275,8 @@ router.get("/recommend", async (req, res) => {
         .json({ error: `No trip found for tripId: ${tripId}` });
     }
     let date = new Date(trip.date.start);
-    if (Date.now() > date) {
-      date = Date.now();
+    if (new Date(Date.now()) > date) {
+      date = new Date(Date.now());
     }
 
     const places = [];

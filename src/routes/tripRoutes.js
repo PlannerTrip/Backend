@@ -224,7 +224,6 @@ router.post("/date", async (req, res) => {
   }
 });
 
-// sent forecast in socket
 // add place to trip or remove in selectBy
 router.post("/place", async (req, res) => {
   const { tripId, placeId } = req.body;
@@ -295,8 +294,8 @@ router.post("/place", async (req, res) => {
     // place add
     let date = new Date(trip.date.start);
 
-    if (Date.now() > date) {
-      date = Date.now();
+    if (new Date(Date.now()) > date) {
+      date = new Date(Date.now());
     }
 
     const formattedDate =
@@ -313,13 +312,14 @@ router.post("/place", async (req, res) => {
       5
     );
 
+    const user = await User.findOne({ id: userId });
+
     io.to(trip.tripId).emit("addPlace", {
-      place: {
-        ...place.toObject(),
-        forecasts: TMD_response
-          ? TMD_response.data.WeatherForecasts[0].forecasts
-          : [],
-      },
+      selectBy: [user.username],
+      ...place.toObject(),
+      forecasts: TMD_response
+        ? TMD_response.data.WeatherForecasts[0].forecasts
+        : [],
     });
   } else if (tripPlaceLength > updatePlace.length) {
     // place remove
@@ -509,7 +509,15 @@ router.get("/information", async (req, res) => {
           5
         );
 
+        const selectBy = [];
+
+        for (const member of item.selectBy) {
+          const user = await User.findOne({ id: member });
+          selectBy.push(user.username);
+        }
+
         places.push({
+          selectBy: selectBy,
           ...place.toObject(),
           forecasts: TMD_response
             ? TMD_response.data.WeatherForecasts[0].forecasts

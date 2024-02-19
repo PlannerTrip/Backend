@@ -11,7 +11,7 @@ const crypto = require("crypto");
 //  ================== fireBase ==================
 
 const { initializeApp, cert } = require("firebase-admin/app");
-const { getStorage } = require("firebase-admin/storage");
+const { getStorage, getDownloadURL } = require("firebase-admin/storage");
 
 const serviceAccount = require("../../firebaseServiceAccountKey.json");
 
@@ -46,7 +46,7 @@ router.post("/", uploadFirebase.array("files", 5), async (req, res) => {
 
     const userId = req.user.id;
     const files = req.files;
-    const downloadURLs = [];
+    // const downloadURLs = [];
 
     const place = await Place.findOne({ placeId: placeId });
     if (!place) {
@@ -54,22 +54,28 @@ router.post("/", uploadFirebase.array("files", 5), async (req, res) => {
         .status(404)
         .json({ error: `No place found for placeId: ${placeId}` });
     }
-
     //  upload file
-    await files.forEach(async (item) => {
-      const randomString = crypto.randomBytes(12).toString("hex");
+    const downloadURLs = await Promise.all(
+      files.map(async (item) => {
+        const randomString = crypto.randomBytes(12).toString("hex");
+        const fileName =
+          Date.now() + "_" + randomString + path.extname(item.originalname);
+        const file = bucket.file(fileName);
 
-      const fileName =
-        Date.now() + "_" + randomString + path.extname(item.originalname);
-      const file = bucket.file(fileName);
-      await file.createWriteStream().end(item.buffer);
+        const stream = file.createWriteStream().end(item.buffer);
 
-      const downloadURL = `https://firebasestorage.googleapis.com/v0/b/${
-        bucket.name
-      }/o/${fileName}?alt=media&token=${Date.now()}`;
-
-      downloadURLs.push({ url: downloadURL, fileName: fileName });
-    });
+        return new Promise((resolve, reject) => {
+          stream.on("finish", async () => {
+            try {
+              const downloadURL = await getDownloadURL(file);
+              resolve({ url: downloadURL, fileName: fileName });
+            } catch (error) {
+              reject(error);
+            }
+          });
+        });
+      })
+    );
 
     await Review.create({
       reviewId: uuidv4(),
@@ -83,6 +89,7 @@ router.post("/", uploadFirebase.array("files", 5), async (req, res) => {
 
     res.json({ message: "success review" });
   } catch (err) {
+    console.log(err);
     return res.status(404).json({ error: err });
   }
 });
