@@ -87,7 +87,7 @@ router.post("/", uploadFirebase.array("files", 5), async (req, res) => {
       likes: [],
     });
 
-    res.json({ message: "success review" });
+    return res.json({ message: "success review" });
   } catch (err) {
     console.log(err);
     return res.status(404).json({ error: err });
@@ -118,6 +118,8 @@ router.delete("/delete", async (req, res) => {
       const file = bucket.file(item.fileName);
       await file.delete();
     });
+
+    await Review.findOneAndDelete({ reviewId: reviewId });
 
     return res.json("delete review success");
   } catch (err) {

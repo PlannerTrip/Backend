@@ -292,34 +292,24 @@ router.post("/place", async (req, res) => {
 
   if (tripPlaceLength < updatePlace.length) {
     // place add
-    let date = new Date(trip.date.start);
-
-    if (new Date(Date.now()) > date) {
-      date = new Date(Date.now());
-    }
-
-    const formattedDate =
-      date.getFullYear() +
-      "-" +
-      ("0" + (date.getMonth() + 1)).slice(-2) +
-      "-" +
-      ("0" + date.getDate()).slice(-2);
 
     const TMD_response = await getForecast(
       place.location.province,
       place.location.district,
-      formattedDate,
-      5
+      trip.date.start,
+      5,
+      res
     );
 
     const user = await User.findOne({ id: userId });
 
     io.to(trip.tripId).emit("addPlace", {
-      selectBy: [user.username],
+      selectBy: [{ username: user.username, userprofile: user.profileUrl }],
       ...place.toObject(),
-      forecasts: TMD_response
-        ? TMD_response.data.WeatherForecasts[0].forecasts
-        : [],
+      forecasts:
+        TMD_response.length !== 0
+          ? TMD_response.data.WeatherForecasts[0].forecasts
+          : [],
     });
   } else if (tripPlaceLength > updatePlace.length) {
     // place remove
@@ -327,7 +317,7 @@ router.post("/place", async (req, res) => {
       placeId: placeId,
     });
   } else if (tripPlaceLength === updatePlace.length) {
-    // update selectBy
+    // update selectBy  call api get userprofile
     io.to(trip.tripId).emit("updatePlace", {
       placeId: placeId,
       selectBy: updatePlace.reduce((result, current) => {
@@ -484,20 +474,6 @@ router.get("/information", async (req, res) => {
     } else if (type === "allPlace") {
       const places = [];
 
-      let date = new Date(trip.date.start);
-
-      if (new Date(Date.now()) > date) {
-        date = new Date(Date.now());
-      }
-
-      // Convert the date to the desired format (YYYY-MM-DD)
-      const formattedDate =
-        date.getFullYear() +
-        "-" +
-        ("0" + (date.getMonth() + 1)).slice(-2) +
-        "-" +
-        ("0" + date.getDate()).slice(-2);
-
       for (const item of trip.place) {
         const place = await Place.findOne({ placeId: item.placeId });
         // get forecast
@@ -505,23 +481,28 @@ router.get("/information", async (req, res) => {
         const TMD_response = await getForecast(
           place.location.province,
           place.location.district,
-          formattedDate,
-          5
+          trip.date.start,
+          5,
+          res
         );
 
         const selectBy = [];
 
         for (const member of item.selectBy) {
           const user = await User.findOne({ id: member });
-          selectBy.push(user.username);
+          selectBy.push({
+            username: user.username,
+            userprofile: user.profileUrl,
+          });
         }
-
+        console.log(TMD_response);
         places.push({
           selectBy: selectBy,
           ...place.toObject(),
-          forecasts: TMD_response
-            ? TMD_response.data.WeatherForecasts[0].forecasts
-            : [],
+          forecasts:
+            TMD_response.length !== 0
+              ? TMD_response.data.WeatherForecasts[0].forecasts
+              : [],
         });
       }
 

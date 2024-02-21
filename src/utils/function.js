@@ -114,8 +114,27 @@ const getPlaceInformation = async (type, placeId, res) => {
   }
 };
 
-const getForecast = async (province, district, formattedDate, duration) => {
+const getForecast = async (province, district, startDate, duration, res) => {
   try {
+    let date = new Date(startDate);
+
+    let endDate = new Date(Date.now());
+    endDate.setDate(endDate.getDate() + 7);
+   
+    if (new Date(Date.now()) > date) {
+      date = new Date(Date.now());
+    } else if (date > endDate) {
+      
+      return [];
+    }
+
+    const formattedDate =
+      date.getFullYear() +
+      "-" +
+      ("0" + (date.getMonth() + 1)).slice(-2) +
+      "-" +
+      ("0" + date.getDate()).slice(-2);
+
     const TMD_response = await axios(
       "https://data.tmd.go.th/nwpapi/v1/forecast/location/daily/place",
       {
@@ -133,7 +152,8 @@ const getForecast = async (province, district, formattedDate, duration) => {
     );
     return TMD_response;
   } catch (err) {
-    return res.status(400).json({ error: "error with tmd api" });
+    console.log(err);
+    // return res.status(400).json({ error: err });
   }
 };
 

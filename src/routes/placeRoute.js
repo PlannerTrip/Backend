@@ -52,16 +52,16 @@ router.get("/information", async (req, res) => {
     const now = new Date();
 
     // Formatting the date and time
-    const dateValue = date.format(now, "YYYY-MM-DD");
     let TMD_response = null;
-    if (forecastDate && forecastDuration) {
-      TMD_response = await getForecast(
-        responsePlace.location.province,
-        responsePlace.location.district,
-        forecastDate,
-        forecastDuration
-      );
-    }
+    // if (forecastDate && forecastDuration) {
+    //   TMD_response = await getForecast(
+    //     responsePlace.location.province,
+    //     responsePlace.location.district,
+    //     forecastDate,
+    //     forecastDuration,
+    //     res
+    //   );
+    // }
 
     // get all review of this place
     const review = await Review.find({ placeId: placeId });
@@ -216,18 +216,6 @@ router.get("/bookmark", async (req, res) => {
           .status(404)
           .json({ error: `No trip found for tripId: ${tripId}` });
       }
-      let date = new Date(trip.date.start);
-      if (new Date(Date.now()) > date) {
-        date = new Date(Date.now());
-      }
-
-      // Convert the date to the desired format (YYYY-MM-DD)
-      const formattedDate =
-        date.getFullYear() +
-        "-" +
-        ("0" + (date.getMonth() + 1)).slice(-2) +
-        "-" +
-        ("0" + date.getDate()).slice(-2);
 
       for (const item of bookmarks) {
         const place = await Place.findOne({ placeId: item.placeId });
@@ -235,15 +223,17 @@ router.get("/bookmark", async (req, res) => {
         const TMD_response = await getForecast(
           place.location.province,
           place.location.district,
-          formattedDate,
-          5
+          trip.date.start,
+          5,
+          res
         );
 
         places.push({
           ...place.toObject(),
-          forecasts: TMD_response
-            ? TMD_response.data.WeatherForecasts[0].forecasts
-            : [],
+          forecasts:
+            TMD_response.length !== 0
+              ? TMD_response.data.WeatherForecasts[0].forecasts
+              : [],
           alreadyAdd: trip.place.some(
             (placeInTrip) =>
               placeInTrip.placeId === place.placeId &&
@@ -274,19 +264,6 @@ router.get("/recommend", async (req, res) => {
         .status(404)
         .json({ error: `No trip found for tripId: ${tripId}` });
     }
-    let date = new Date(trip.date.start);
-    if (new Date(Date.now()) > date) {
-      date = new Date(Date.now());
-    }
-
-    const places = [];
-    // Convert the date to the desired format (YYYY-MM-DD)
-    const formattedDate =
-      date.getFullYear() +
-      "-" +
-      ("0" + (date.getMonth() + 1)).slice(-2) +
-      "-" +
-      ("0" + date.getDate()).slice(-2);
 
     for (const placeId of placeIdList) {
       const place = await Place.findOne({ placeId: placeId });
@@ -294,15 +271,17 @@ router.get("/recommend", async (req, res) => {
       const TMD_response = await getForecast(
         place.location.province,
         place.location.district,
-        formattedDate,
-        5
+        trip.date.start,
+        5,
+        res
       );
 
       places.push({
         ...place.toObject(),
-        forecasts: TMD_response
-          ? TMD_response.data.WeatherForecasts[0].forecasts
-          : [],
+        forecasts:
+          TMD_response.length !== 0
+            ? TMD_response.data.WeatherForecasts[0].forecasts
+            : [],
         alreadyAdd: trip.place.some(
           (placeInTrip) =>
             placeInTrip.placeId === place.placeId &&

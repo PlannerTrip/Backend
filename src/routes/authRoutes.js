@@ -42,12 +42,12 @@ router.post("/login", async (req, res) => {
     if (!isMatch) {
       return res
         .status(404)
-        .json({ error: "wrong password or user not found" });
+        .json({ error: "wrong password or email not found" });
     }
     if (isMatch) {
       const payload = {
         id: user.id,
-        sub: req.body.username,
+        sub: req.body.email,
         iat: new Date().getTime(),
       };
 
