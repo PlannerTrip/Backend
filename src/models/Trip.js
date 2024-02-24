@@ -29,18 +29,28 @@ const TripSchema = new Schema({
       day: Number,
       place: [
         {
+          placePlanId: String,
           placeId: String,
           startTime: String,
           endTime: String,
           selectBy: [String],
         },
       ],
-      activity: [{ name: String, startTime: String, endTime: String }],
+      activity: [
+        {
+          name: String,
+          startTime: String,
+          endTime: String,
+          activityId: String,
+          selectBy: [String],
+        },
+      ],
     },
   ],
   inviteLink: String,
-  // invitation placeSelect
+  // invitation placeSelect planSelect
   currentStage: { type: String, default: "invitation" },
+  currentPlace: { type: String, default: "" },
 });
 
 module.exports = mongoose.model("Trip", TripSchema);

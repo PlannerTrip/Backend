@@ -264,6 +264,7 @@ router.get("/recommend", async (req, res) => {
         .status(404)
         .json({ error: `No trip found for tripId: ${tripId}` });
     }
+    const places = [];
 
     for (const placeId of placeIdList) {
       const place = await Place.findOne({ placeId: placeId });

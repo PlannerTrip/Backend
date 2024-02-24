@@ -10,7 +10,7 @@ const Trip = require("../models/Trip.js");
 const User = require("../models/User.js");
 const io = require("../../index.js");
 const Place = require("../models/Place.js");
-const { getForecast } = require("../utils/function.js");
+const { getForecast, distanceTwoPoint } = require("../utils/function.js");
 
 const TMD_KEY = process.env.TMD_KEY;
 
@@ -261,7 +261,7 @@ router.post("/place", async (req, res) => {
         item.selectBy.some((member) => member === userId)
       ) {
         return {
-          ...item,
+          placeId: item.placeId,
           selectBy: item.selectBy.filter((member) => member != userId),
         };
       }
@@ -276,7 +276,10 @@ router.post("/place", async (req, res) => {
     if (trip.place.some((item) => item.placeId === placeId)) {
       updatePlace = trip.place.map((item) => {
         if (item.placeId === placeId) {
-          return { ...item, selectBy: [...item.selectBy, userId] };
+          return {
+            placeId: item.placeId,
+            selectBy: [...item.selectBy, userId],
+          };
         }
         return item;
       });
@@ -304,7 +307,13 @@ router.post("/place", async (req, res) => {
     const user = await User.findOne({ id: userId });
 
     io.to(trip.tripId).emit("addPlace", {
-      selectBy: [{ username: user.username, userprofile: user.profileUrl }],
+      selectBy: [
+        {
+          username: user.username,
+          userprofile: user.profileUrl,
+          userId: user.id,
+        },
+      ],
       ...place.toObject(),
       forecasts:
         TMD_response.length !== 0
@@ -318,14 +327,28 @@ router.post("/place", async (req, res) => {
     });
   } else if (tripPlaceLength === updatePlace.length) {
     // update selectBy  call api get userprofile
+
+    const currentSelectBy = updatePlace.reduce((result, current) => {
+      if (current.placeId === placeId) {
+        return current.selectBy;
+      }
+      return result;
+    }, []);
+
+    const selectBy = [];
+
+    for (const member of currentSelectBy) {
+      const user = await User.findOne({ id: member });
+      selectBy.push({
+        userId: user.id,
+        username: user.username,
+        userprofile: user.profileUrl,
+      });
+    }
+
     io.to(trip.tripId).emit("updatePlace", {
       placeId: placeId,
-      selectBy: updatePlace.reduce((result, current) => {
-        if (current.placeId === placeId) {
-          return current.selectBy;
-        }
-        return result;
-      }, []),
+      selectBy: selectBy,
     });
   }
 
@@ -337,7 +360,6 @@ router.post("/place", async (req, res) => {
 });
 
 // remove place in trip
-// sent id in socket
 router.delete("/place", async (req, res) => {
   try {
     const { tripId, placeId } = req.body;
@@ -384,6 +406,119 @@ router.delete("/place", async (req, res) => {
   }
 });
 
+router.post("/plan", async (req, res) => {
+  try {
+    const { tripId, placeId, day } = req.body;
+
+    const trip = await Trip.findOne({ tripId: tripId });
+    if (!trip) {
+      return res
+        .status(404)
+        .json({ error: `No trip found for tripId: ${tripId}` });
+    }
+
+    if (!trip.place.some((place) => place.placeId === placeId)) {
+      return res
+        .status(404)
+        .json({ error: `No ${placeId} found for tripId: ${tripId}` });
+    }
+
+    const placePlanId = uuidv4();
+    trip.plan = trip.plan.map((item) => {
+      if (item.day === day) {
+        const place = trip.place.reduce((result, current) => {
+          if (current.placeId === placeId) {
+            return current;
+          }
+          return result;
+        }, {});
+        return {
+          ...item,
+          place: [
+            ...item.place,
+            { ...place, placePlanId: placePlanId, startTime: "", endTime: "" },
+          ],
+        };
+      }
+      return item;
+    });
+    await trip.save();
+
+    // sentSocket
+
+    return res.json("success");
+  } catch (err) {
+    return res.status(404).json({ error: err });
+  }
+});
+
+router.post("/planActivity", async (req, res) => {
+  try {
+    const { day, name, tripId } = req.body;
+    const trip = await Trip.findOne({ tripId: tripId });
+    if (!trip) {
+      return res
+        .status(404)
+        .json({ error: `No trip found for tripId: ${tripId}` });
+    }
+    const activityId = uuidv4();
+    trip.plan = trip.plan.map((item) => {
+      if (item.day === day) {
+        return {
+          ...item,
+          activity: [
+            ...item.activity,
+            { startTime: "", endTime: "", name: name, activityId: activityId },
+          ],
+        };
+      }
+      return item;
+    });
+
+    await trip.save();
+    // sent socket
+    return res.json("success");
+  } catch (err) {
+    console.log(err);
+    return res.status(404).json({ error: err });
+  }
+});
+
+router.delete("/plan", async (req, res) => {
+  try {
+    const { tripId, id, day } = req.body;
+
+    const trip = await Trip.findOne({ tripId: tripId });
+    if (!trip) {
+      return res
+        .status(404)
+        .json({ error: `No trip found for tripId: ${tripId}` });
+    }
+
+    trip.plan = trip.plan.map((item) => {
+      if (item.day === day) {
+        return {
+          ...item,
+          place: item.place.filter((place) => place.placePlanId !== id),
+          activity: item.activity.filter(
+            (activity) => activity.activityId !== id
+          ),
+        };
+      }
+
+      return item;
+    });
+
+    // sentSocket
+
+    await trip.save();
+    return res.json("success");
+  } catch (err) {
+    console.log(err);
+    res.status(404).json({ error: err });
+  }
+});
+
 // update stage
 router.post("/stage", async (req, res) => {
   try {
@@ -419,7 +554,7 @@ router.post("/stage", async (req, res) => {
       }
 
       trip.plan = datesBetween.map((date, index) => {
-        return { date: date, place: [], day: index, activity: [] };
+        return { date: date, place: [], day: index + 1, activity: [] };
       });
     }
 
@@ -438,7 +573,7 @@ router.post("/stage", async (req, res) => {
 // get information
 router.get("/information", async (req, res) => {
   try {
-    const { type, tripId } = req.query;
+    const { type, tripId, latitude, longitude } = req.query;
     const userId = req.user.id;
     const trip = await Trip.findOne({ tripId: tripId });
     if (!trip) {
@@ -458,6 +593,7 @@ router.get("/information", async (req, res) => {
       let responseMember = [];
       for (const item of trip.member) {
         const user = await User.findOne({ id: item.userId });
+        // console.log(user);
         responseMember.push({
           userId: item.userId,
           username: user.username,
@@ -491,11 +627,12 @@ router.get("/information", async (req, res) => {
         for (const member of item.selectBy) {
           const user = await User.findOne({ id: member });
           selectBy.push({
+            userId: user.id,
             username: user.username,
             userprofile: user.profileUrl,
           });
         }
-        console.log(TMD_response);
+
         places.push({
           selectBy: selectBy,
           ...place.toObject(),
@@ -508,8 +645,90 @@ router.get("/information", async (req, res) => {
 
       return res.json({ places: places, owner: owner });
     } else if (type === "allPlaceForEachDate") {
+      // ============ getPlace toSelect ============
       // get place information
-      return res.json({ place: trip.place, plan: trip.plan });
+      const places = [];
+
+      for (const item of trip.place) {
+        const place = await Place.findOne({ placeId: item.placeId });
+        // get forecast
+
+        const TMD_response = await getForecast(
+          place.location.province,
+          place.location.district,
+          trip.date.start,
+          5,
+          res
+        );
+
+        places.push({
+          ...place.toObject(),
+          forecasts:
+            TMD_response.length !== 0
+              ? TMD_response.data.WeatherForecasts[0].forecasts
+              : [],
+        });
+      }
+
+      //  ============= get plan =============
+
+      const plan = [];
+
+      for (const value of trip.plan) {
+        const currentPlace = [];
+
+        // get place information
+        for (const item of value.place) {
+          const place = await Place.findOne({ placeId: item.placeId });
+
+          const selectBy = [];
+
+          for (const member of item.selectBy) {
+            const user = await User.findOne({ id: member });
+            selectBy.push({
+              userId: user.id,
+              username: user.username,
+              userprofile: user.profileUrl,
+            });
+          }
+          const distant = distanceTwoPoint(
+            place.latitude,
+            place.longitude,
+            latitude,
+            longitude
+          );
+
+          currentPlace.push({
+            selectBy: selectBy,
+            ...place.toObject(),
+            distant: distant,
+            placePlanId: item.placePlanId,
+          });
+        }
+
+        plan.push({
+          place: currentPlace.map((item) => ({
+            placeName: item.placeName,
+            coverImg: item.coverImg,
+            location: item.location,
+            placePlanId: item.placePlanId,
+            distant: item.distant,
+            selectBy: item.selectBy,
+          })),
+          ...value.toObject(),
+        });
+      }
+
+      return res.json({
+        places: places.map((place) => ({
+          placeName: place.placeName,
+          coverImg: place.coverImg,
+          location: place.location,
+          forecasts: place.forecasts,
+          placeId: place.placeId,
+        })),
+        plan: plan,
+      });
     } else if (type === "all") {
       // get place information
       return res.json(trip);

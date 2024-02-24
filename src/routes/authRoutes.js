@@ -53,7 +53,9 @@ router.post("/login", async (req, res) => {
 
       const token = jwt.encode(payload, SECRET);
 
-      return res.status(200).json({ message: "login success", token: token });
+      return res
+        .status(200)
+        .json({ message: "login success", token: token, userId: user.id });
     }
   } catch (err) {
     return res

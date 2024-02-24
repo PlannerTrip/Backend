@@ -120,11 +120,10 @@ const getForecast = async (province, district, startDate, duration, res) => {
 
     let endDate = new Date(Date.now());
     endDate.setDate(endDate.getDate() + 7);
-   
+
     if (new Date(Date.now()) > date) {
       date = new Date(Date.now());
     } else if (date > endDate) {
-      
       return [];
     }
 
@@ -152,7 +151,8 @@ const getForecast = async (province, district, startDate, duration, res) => {
     );
     return TMD_response;
   } catch (err) {
-    console.log(err);
+    console.log("forecast Error");
+    // console.log(err);
     // return res.status(400).json({ error: err });
   }
 };
