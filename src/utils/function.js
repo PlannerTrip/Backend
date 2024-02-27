@@ -1,8 +1,10 @@
 require("dotenv").config();
 
 const bcrypt = require("bcrypt");
-const Place = require("../models/Place.js");
 const axios = require("axios");
+
+const Place = require("../models/Place.js");
+const User = require("../models/User.js");
 
 const TMD_KEY = process.env.TMD_KEY;
 
@@ -157,10 +159,30 @@ const getForecast = async (province, district, startDate, duration, res) => {
   }
 };
 
+const getUserInformation = async (arrayUser) => {
+  try {
+    const result = [];
+    for (const userId of arrayUser) {
+      const userInformation = await User.findOne({ id: userId });
+
+      result.push({
+        userId: userInformation.id,
+        username: userInformation.username,
+        userprofile: userInformation.profileUrl,
+      });
+    }
+    return result;
+  } catch (err) {
+    console.log(err);
+    return [];
+  }
+};
+
 module.exports = {
   hashPassword,
   comparePasswords,
   distanceTwoPoint,
   getPlaceInformation,
   getForecast,
+  getUserInformation,
 };
