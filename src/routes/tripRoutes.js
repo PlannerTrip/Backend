@@ -857,8 +857,54 @@ router.get("/information", async (req, res) => {
         owner: owner,
       });
     } else if (type === "all") {
-      // get place information
-      return res.json(trip);
+      // get member information
+      const member = await getUserInformation(
+        trip.member.map((member) => member.userId)
+      );
+
+      const plan = [];
+
+      // get information about plan
+      for (const dailyPlan of trip.plan) {
+        const places = [];
+
+        for (const place of dailyPlan.place) {
+          const placeInformation = await Place.findOne({
+            placeId: place.placeId,
+          });
+
+          places.push({
+            placeId: place.placePlanId,
+            startTime: place.startTime,
+            endTime: place.endTime,
+            placeName: placeInformation.placeName,
+            covetImg: placeInformation.coverImg,
+            location: placeInformation.location,
+            selectBy: place.selectBy,
+            latitude: placeInformation.latitude,
+            longitude: placeInformation.longitude,
+          });
+        }
+        // get activity
+
+        plan.push({
+          places: places,
+          day: dailyPlan.day,
+          date: dailyPlan.date,
+          activity: dailyPlan.activity,
+        });
+      }
+
+      return res.json({
+        information: {
+          date: trip.date,
+          member: member,
+          name: trip.name,
+          note: trip.note,
+        },
+        plan: plan,
+        owner: owner,
+      });
     }
   } catch (err) {
     console.log(err);

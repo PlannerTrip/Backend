@@ -25,7 +25,6 @@ const TripSchema = new Schema({
   plan: [
     {
       date: String,
-      name: String,
       day: Number,
       place: [
         {
@@ -33,6 +32,8 @@ const TripSchema = new Schema({
           placeId: String,
           startTime: String,
           endTime: String,
+          // normal skip checkIn
+          status: { type: String, default: "normal" },
           selectBy: [String],
         },
       ],
@@ -48,9 +49,10 @@ const TripSchema = new Schema({
     },
   ],
   inviteLink: String,
-  // invitation placeSelect planSelect
+  // invitation placeSelect planSelect tripSummary
   currentStage: { type: String, default: "invitation" },
   currentPlace: { type: String, default: "" },
+  successCreate: { type: Boolean, default: false },
 });
 
 module.exports = mongoose.model("Trip", TripSchema);

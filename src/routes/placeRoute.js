@@ -130,7 +130,7 @@ router.post("/checkIn", async (req, res) => {
       longitude
     );
 
-    if (distance > 5) {
+    if (distance > 3) {
       return res.status(404).json({
         error: `The distance (${distance.toFixed(
           2
