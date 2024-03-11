@@ -63,9 +63,11 @@ const placeRoute = require("./src/routes/placeRoute");
 const reviewRoutes = require("./src/routes/reviewRotes");
 const tripRoutes = require("./src/routes/tripRoutes");
 const userProfileRoutes = require("./src/routes/userProfileRoutes");
+const blogRoutes = require("./src/routes/blogRoutes");
 
 app.use("/", authRoutes);
 app.use("/place", placeRoute);
 app.use("/review", reviewRoutes);
 app.use("/trip", tripRoutes);
 app.use("/user", userProfileRoutes);
+app.use("/blog", blogRoutes);
