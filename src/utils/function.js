@@ -60,6 +60,9 @@ const getPlaceInformation = async (type, placeId, res) => {
     if (!place) {
       const listOfType = ["ATTRACTION", "SHOP", "ACCOMMODATION", "RESTAURANT"];
       // check type
+      if (type === "OTHER") {
+        return;
+      }
       if (!listOfType.includes(type)) {
         return res.status(400).json({ error: "Invalid type" });
       }

@@ -297,4 +297,44 @@ router.get("/recommend", async (req, res) => {
   }
 });
 
+router.get("/blogSearch", async (req, res) => {
+  try {
+    const { input } = req.body;
+
+    const header = {
+      "Accept-Language": "th",
+      "Content-Type": "text/json",
+      Authorization: process.env.TAT_KEY,
+    };
+    const TAT_response = await axios(
+      `https://tatapi.tourismthailand.org/tatapi/v5/places/search`,
+      {
+        params: {
+          location: "13.6904831,100.5226014",
+          keyword: input,
+          numberofresult: 10,
+        },
+        headers: header,
+      }
+    );
+    // add new place to database
+    for (const place of TAT_response.data.result) {
+      await getPlaceInformation(place.category_code, place.place_id, res);
+    }
+
+    return res.json(
+      TAT_response.data.result.map((information) => ({
+        placeName: information.place_name,
+        placeId: information.place_id,
+        location: {
+          province: information.location.province,
+          district: information.location.district,
+        },
+      }))
+    );
+  } catch (err) {
+    return res.status(500).json({ error: err });
+  }
+});
+
 module.exports = router;
