@@ -5,6 +5,7 @@ const axios = require("axios");
 
 const Place = require("../models/Place.js");
 const User = require("../models/User.js");
+const Trip = require("../models/Trip.js");
 
 const TMD_KEY = process.env.TMD_KEY;
 
@@ -181,6 +182,28 @@ const getUserInformation = async (arrayUser) => {
   }
 };
 
+const checkUserIdExists = (trip, userId, tripId) => {
+  if (!trip.member.some((user) => user.userId === userId)) {
+    throw new Error(`No userId found for tripId: ${tripId}`);
+  }
+};
+
+const getTrip = async (tripId) => {
+  const trip = await Trip.findOne({ tripId: tripId });
+
+  if (!trip) {
+    throw new Error(`No trip found for tripId: ${tripId}`);
+  }
+
+  return trip;
+};
+
+const checkOwner = (id, createBy) => {
+  if (id !== createBy) {
+    throw new Error(`"Permission denied`);
+  }
+};
+
 module.exports = {
   hashPassword,
   comparePasswords,
@@ -188,4 +211,7 @@ module.exports = {
   getPlaceInformation,
   getForecast,
   getUserInformation,
+  checkUserIdExists,
+  getTrip,
+  checkOwner,
 };

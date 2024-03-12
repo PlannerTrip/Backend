@@ -330,6 +330,7 @@ router.get("/blogSearch", async (req, res) => {
           province: information.location.province,
           district: information.location.district,
         },
+        coverImg: information.thumbnail_url,
       }))
     );
   } catch (err) {

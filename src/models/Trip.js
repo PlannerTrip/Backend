@@ -53,6 +53,7 @@ const TripSchema = new Schema({
   currentStage: { type: String, default: "invitation" },
   currentPlace: { type: String, default: "" },
   successCreate: { type: Boolean, default: false },
+  coverImg: { type: String, default: "" },
 });
 
 module.exports = mongoose.model("Trip", TripSchema);
