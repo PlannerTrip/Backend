@@ -23,6 +23,8 @@ module.exports = io;
 
 const MONGODB_URI = process.env.MONGODB_URI;
 
+
+
 const publicPaths = [
   "/login",
   "/register",

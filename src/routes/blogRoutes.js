@@ -61,6 +61,7 @@ router.post("/", uploadFirebase.array("files", 10), async (req, res) => {
       place,
       createBy: userId,
       img: downloadURLs,
+      likes: [],
     });
 
     res.json("success create blog");

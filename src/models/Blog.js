@@ -14,6 +14,7 @@ const BlogSchema = new Schema({
     end: { type: String, default: null },
   },
   createBy: String,
+  likes: [{ userId: String, timeStamp: { type: Date, default: Date.now() } }],
 });
 
 module.exports = mongoose.model("Blog", BlogSchema);

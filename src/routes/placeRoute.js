@@ -299,7 +299,7 @@ router.get("/recommend", async (req, res) => {
 
 router.get("/blogSearch", async (req, res) => {
   try {
-    const { input } = req.body;
+    const { input } = req.query;
 
     const header = {
       "Accept-Language": "th",
