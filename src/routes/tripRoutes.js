@@ -1082,9 +1082,33 @@ router.get("/userTripName", async (req, res) => {
     const userId = req.user.id;
 
     const trips = await Trip.find({ createBy: userId, successCreate: true });
-    return res.json(
-      trips.map((trip) => ({ name: trip.name, tripId: trip.tripId }))
-    );
+
+    const result = [];
+
+    for (const trip of trips) {
+      const places = [];
+      for (const item of trip.place) {
+        const place = await Place.findOne({ placeId: item.placeId });
+        // get forecast
+
+        places.push({
+          placeName: place.placeName,
+          placeId: place.placeId,
+          coverImg: place.coverImg[0],
+          location: {
+            district: place.location.district,
+            province: place.location.province,
+          },
+        });
+      }
+      result.push({
+        places: places,
+        name: trip.name,
+        tripId: trip.tripId,
+      });
+    }
+
+    return res.json(result);
   } catch (err) {
     return res.status(500).json({ error: `error ${err}` });
   }
