@@ -20,7 +20,17 @@ const {
   checkOwner,
 } = require("../utils/function.js");
 
-const TMD_KEY = process.env.TMD_KEY;
+const upload = multer({
+  storage: multer.memoryStorage(),
+});
+
+const crypto = require("crypto");
+
+const { getStorage, getDownloadURL } = require("firebase-admin/storage");
+
+const bucket = getStorage().bucket();
+
+const path = require("path");
 
 // create trip
 router.post("/", async (req, res) => {
@@ -194,7 +204,7 @@ router.delete("/member", async (req, res) => {
       return result;
     }, []);
 
-    // await trip.save();
+    await trip.save();
 
     io.to(trip.tripId).emit("removeMember", {
       userId: friendId,
@@ -672,6 +682,16 @@ router.put("/planTime", async (req, res) => {
     // update time
 
     trip.plan = trip.plan.map((dailyPlan) => {
+      // const timeTable = [
+      //   ...dailyPlan.place.map((place) => [place.startTime, place.endTime]),
+      //   ...dailyPlan.activity.map((activity) => [
+      //     activity.startTime,
+      //     activity.endTime,
+      //   ]),
+      // ];
+
+      // console.log("timeTable", timeTable);
+
       dailyPlan.place = dailyPlan.place.map((place) => {
         if (place.placePlanId === id) {
           if (type === "startTime") {
@@ -712,6 +732,7 @@ router.put("/planTime", async (req, res) => {
   }
 });
 
+// change name of trip
 router.put("/name", async (req, res) => {
   try {
     const { tripId, name } = req.body;
@@ -732,6 +753,7 @@ router.put("/name", async (req, res) => {
   }
 });
 
+// change note of trip
 router.put("/note", async (req, res) => {
   try {
     const { tripId, note } = req.body;
@@ -752,24 +774,65 @@ router.put("/note", async (req, res) => {
   }
 });
 
-router.put("/coverImg", async (req, res) => {
+// change coverImg of trip
+router.put("/coverImg", upload.single("coverImg"), async (req, res) => {
   try {
     const { tripId } = req.body;
     const userId = req.user.id;
-    const file = req.file;
+    const coverImg = req.file;
     const trip = await getTrip(tripId);
     checkUserIdExists(trip, userId, tripId);
     checkOwner(userId, trip.createBy);
-    console.log(file);
 
-    // await trip.save();
+    const randomString = crypto.randomBytes(12).toString("hex");
+    const fileName =
+      Date.now() + "_" + randomString + path.extname(coverImg.originalname);
+    const file = bucket.file(fileName);
 
-    // io.to(tripId).emit("updateNote", {
-    //   note,
-    // });
-    return res.json("successChangeNote");
+    const stream = file.createWriteStream().end(coverImg.buffer);
+
+    const result = await new Promise((resolve, reject) => {
+      stream.on("finish", async () => {
+        try {
+          const downloadURL = await getDownloadURL(file);
+          resolve({ url: downloadURL, fileName: fileName });
+        } catch (error) {
+          reject(error);
+        }
+      });
+    });
+
+    trip.coverImg = result;
+    await trip.save();
+
+    io.to(tripId).emit("updateCoverImg", {
+      coverImg: result.url,
+    });
+    return res.json("successChangeCoverImg");
   } catch (err) {
     return res.status(500).json({ error: `error ${err}` });
+  }
+});
+
+router.put("/createTrip", async (req, res) => {
+  try {
+    const { tripId } = req.body;
+    const userId = req.user.id;
+    const trip = await getTrip(tripId);
+    checkUserIdExists(trip, userId, tripId);
+    checkOwner(userId, trip.createBy);
+
+    trip.successCreate = true;
+    trip.currentStage = "finish";
+    await trip.save();
+
+    io.to(tripId).emit("updateStage", {
+      stage: "finish",
+    });
+
+    return res.json("success create trip");
+  } catch (err) {
+    return res.status(500).json({ error: `error ${error}` });
   }
 });
 
@@ -1001,6 +1064,7 @@ router.get("/information", async (req, res) => {
           member: member,
           name: trip.name,
           note: trip.note,
+          coverImg: trip.coverImg.url,
         },
         plan: plan,
         owner: owner,
@@ -1009,6 +1073,19 @@ router.get("/information", async (req, res) => {
   } catch (err) {
     console.log(err);
     return res.status(400).json({ error: err });
+  }
+});
+
+router.get("/userTripName", async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    const trips = await Trip.find({ createBy: userId, successCreate: true });
+    return res.json(
+      trips.map((trip) => ({ name: trip.name, tripId: trip.tripId }))
+    );
+  } catch (err) {
+    return res.status(500).json({ error: `error ${err}` });
   }
 });
 

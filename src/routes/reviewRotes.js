@@ -10,18 +10,14 @@ const crypto = require("crypto");
 
 //  ================== fireBase ==================
 
-const { initializeApp, cert } = require("firebase-admin/app");
 const { getStorage, getDownloadURL } = require("firebase-admin/storage");
 
-const serviceAccount = require("../../firebaseServiceAccountKey.json");
+
 
 const Review = require("../models/Review.js");
 const Place = require("../models/Place.js");
 
-initializeApp({
-  credential: cert(serviceAccount),
-  storageBucket: process.env.BUCKET_URL,
-});
+
 
 const bucket = getStorage().bucket();
 

@@ -23,8 +23,6 @@ module.exports = io;
 
 const MONGODB_URI = process.env.MONGODB_URI;
 
-
-
 const publicPaths = [
   "/login",
   "/register",
@@ -57,6 +55,15 @@ mongoose
   .catch((error) => {
     console.log("Error connecting to MongoDB:", error);
   });
+
+// ==================== firebase ====================
+
+const { initializeApp, cert } = require("firebase-admin/app");
+const serviceAccount = require("./firebaseServiceAccountKey.json");
+initializeApp({
+  credential: cert(serviceAccount),
+  storageBucket: process.env.BUCKET_URL,
+});
 
 // ==================== routes ====================
 

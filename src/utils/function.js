@@ -140,6 +140,7 @@ const getForecast = async (province, district, startDate, duration, res) => {
       "-" +
       ("0" + date.getDate()).slice(-2);
 
+    console.log(formattedDate);
     const TMD_response = await axios(
       "https://data.tmd.go.th/nwpapi/v1/forecast/location/daily/place",
       {
@@ -204,6 +205,17 @@ const checkOwner = (id, createBy) => {
   }
 };
 
+const compareTime = (a, b) => {
+  const [hourA, minuteA] = a.split(":").map(Number);
+  const [hourB, minuteB] = b.split(":").map(Number);
+
+  if (hourA !== hourB) {
+    return hourA - hourB; // Sort by hour first
+  } else {
+    return minuteA - minuteB; // If hours are equal, sort by minute
+  }
+};
+
 module.exports = {
   hashPassword,
   comparePasswords,
@@ -214,4 +226,5 @@ module.exports = {
   checkUserIdExists,
   getTrip,
   checkOwner,
+  compareTime,
 };
