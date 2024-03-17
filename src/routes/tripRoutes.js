@@ -451,9 +451,10 @@ router.delete("/place", async (req, res) => {
     );
 
     // remove form plan
-    trip.plan = trip.plan.map((item) =>
-      item.place.filter((value) => value.placeId !== placeId)
-    );
+    trip.plan = trip.plan.map((item) => ({
+      ...item,
+      place: item.place.filter((value) => value.placeId !== placeId),
+    }));
 
     // socket sent
     io.to(trip.tripId).emit("removePlace", {
