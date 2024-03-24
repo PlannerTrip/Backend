@@ -49,7 +49,7 @@ const TripSchema = new Schema({
     },
   ],
   inviteLink: String,
-  // invitation placeSelect planSelect tripSummary finish
+  // invitation placeSelect planSelect tripSummary stopSelect-{day} finish
   currentStage: { type: String, default: "invitation" },
   currentPlace: { type: String, default: "" },
   successCreate: { type: Boolean, default: false },

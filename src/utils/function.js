@@ -122,6 +122,9 @@ const getPlaceInformation = async (type, placeId, res) => {
 
 const getForecast = async (province, district, startDate, duration, res) => {
   try {
+    // for debug
+    return [];
+
     let date = new Date(startDate);
 
     let endDate = new Date(Date.now());
