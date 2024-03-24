@@ -9,6 +9,8 @@ const Trip = require("../models/Trip.js");
 
 const TMD_KEY = process.env.TMD_KEY;
 
+const polyline = require("@mapbox/polyline");
+
 const hashPassword = async (password) => {
   try {
     const saltRounds = 10;
@@ -62,7 +64,7 @@ const getPlaceInformation = async (type, placeId, res) => {
       const listOfType = ["ATTRACTION", "SHOP", "ACCOMMODATION", "RESTAURANT"];
       // check type
       if (type === "OTHER") {
-        return;
+        return [];
       }
       if (!listOfType.includes(type)) {
         return res.status(400).json({ error: "Invalid type" });
@@ -260,6 +262,33 @@ const getTripInformation = async (trips) => {
   }
 };
 
+const getStopPlace = async (geolocation) => {
+  try {
+    const header = {
+      "Accept-Language": "th",
+      "Content-Type": "text/json",
+      Authorization: process.env.TAT_KEY,
+    };
+
+    const TAT_response = await axios(
+      `https://tatapi.tourismthailand.org/tatapi/v5/places/search`,
+      {
+        params: {
+          geolocation: geolocation,
+          keyword: "",
+          searchradius: 3000,
+          numberofresult: 2,
+        },
+        headers: header,
+      }
+    );
+    return TAT_response.data.result;
+  } catch (err) {
+    // console.log(err);
+    return [];
+  }
+};
+
 module.exports = {
   hashPassword,
   comparePasswords,
@@ -272,4 +301,5 @@ module.exports = {
   checkOwner,
   compareTime,
   getTripInformation,
+  getStopPlace,
 };

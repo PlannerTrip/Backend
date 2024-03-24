@@ -10,6 +10,8 @@ const Trip = require("../models/Trip.js");
 const User = require("../models/User.js");
 const Place = require("../models/Place.js");
 
+const polyline = require("@mapbox/polyline");
+
 const io = require("../../index.js");
 const {
   getForecast,
@@ -19,6 +21,10 @@ const {
   getTrip,
   checkOwner,
   getTripInformation,
+  getPlaceInformation,
+
+  getStopPlace,
+  compareTime,
 } = require("../utils/function.js");
 
 const upload = multer({
@@ -1134,36 +1140,119 @@ router.get("/myTrip", async (req, res) => {
 
 router.get("/stop", async (req, res) => {
   try {
-    const response = await axios.post(
+    const { tripId, day } = req.query;
+
+    const trip = await Trip.findOne({ tripId });
+    // console.log(trip);
+
+    const plan = trip.plan
+      .reduce((result, current) => {
+        if (current.day === Number(day)) {
+          result = current.place;
+        }
+        return result;
+      }, [])
+      .sort((a, b) => compareTime(a.startTime, b.startTime));
+
+    const allPoint = [];
+    const allPointInfo = [];
+
+    for (place of plan) {
+      const placeInfo = await getPlaceInformation("", place.placeId);
+      allPoint.push({
+        latitude: placeInfo.latitude,
+        longitude: placeInfo.longitude,
+      });
+      allPointInfo.push({
+        latitude: placeInfo.latitude,
+        longitude: placeInfo.longitude,
+        placeName: placeInfo.placeName,
+        placeId: placeInfo.placeId,
+      });
+    }
+
+    const origin = {
+      location: {
+        latLng: allPoint[0],
+      },
+    };
+
+    const destination = {
+      location: {
+        latLng: allPoint[allPoint.length - 1],
+      },
+    };
+
+    const intermediates = allPoint
+      .slice(1, allPoint.length - 1)
+      .map((location) => ({
+        location: {
+          latLng: location,
+        },
+      }));
+    const result = await axios.post(
       `https://routes.googleapis.com/directions/v2:computeRoutes`,
       {
-        origin: {
-          location: {
-            latLng: {
-              latitude: 18.805148,
-              longitude: 98.901021,
-            },
-          },
-        },
-        destination: {
-          location: {
-            latLng: {
-              latitude: 13.726444,
-              longitude: 100.537911,
-            },
-          },
-        },
+        origin: origin,
+        destination: destination,
+        intermediates: intermediates,
       },
       {
         headers: {
           "Content-Type": "application/json",
-          "X-Goog-Api-Key": "AIzaSyDF0UVQ0Sxes5rHzwcoohPB0nV2kRGinAU",
+          "X-Goog-Api-Key": process.env.GOOGLE_API,
           "X-Goog-FieldMask":
             "routes.duration,routes.distanceMeters,routes.polyline.encodedPolyline",
         },
       }
     );
-    return res.json(response.data);
+
+    const data = result.data;
+
+    const decode = polyline.decode(data.routes[0].polyline.encodedPolyline);
+
+    const response = [];
+    for (let i = 0; i <= 10; i++) {
+      let index = Math.round(decode.length * i * 0.1);
+      if (index >= decode.length) {
+        index--;
+      }
+
+      // console.log(index);
+      // console.log(decode[index][0], decode[index][1]);
+
+      const TAT_response = await getStopPlace(
+        `${decode[index][0]},${decode[index][1]}`
+      );
+      // add new place to database
+      for (const place of TAT_response) {
+        const placeInfo = await getPlaceInformation(
+          place.category_code,
+          place.place_id,
+          res
+        );
+        // console.log(placeInfo);
+        if (placeInfo.length !== 0) {
+          response.push({
+            placeId: placeInfo.placeId,
+            placeName: placeInfo.placeName,
+            coverImg:
+              placeInfo.coverImg && placeInfo.coverImg[0]
+                ? placeInfo.coverImg[0]
+                : "",
+            location: placeInfo.location,
+            latitude: placeInfo.latitude,
+            longitude: placeInfo.longitude,
+          });
+        }
+      }
+    }
+
+    return res.json({
+      places: response,
+      planPlace: allPointInfo,
+      polyLine: data.routes[0].polyline.encodedPolyline,
+    });
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }

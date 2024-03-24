@@ -338,4 +338,41 @@ router.get("/blogSearch", async (req, res) => {
   }
 });
 
+router.post("/checkInTest", async (req, res) => {
+  try {
+    const placeId = req.body.placeId;
+    const userId = req.user.id;
+
+    // check is placeId available
+    const place = await Place.findOne({ placeId: placeId });
+    if (!place) {
+      return res
+        .status(404)
+        .json({ error: `No place found for placeId: ${placeId}` });
+    }
+
+    // check if user already checkIn res error
+    const checkIn = await CheckIn.findOne({
+      placeId: placeId,
+      userId: userId,
+    });
+
+    if (checkIn) {
+      return res
+        .status(409)
+        .json({ error: "Already checked in at this place" });
+    }
+
+    // create new checkIn
+    await CheckIn.create({
+      placeId: placeId,
+      userId: userId,
+      province: place.location.province,
+    });
+    return res.json({ message: "Success checkIn" });
+  } catch (error) {
+    return res.status(400).json({ error: error });
+  }
+});
+
 module.exports = router;
