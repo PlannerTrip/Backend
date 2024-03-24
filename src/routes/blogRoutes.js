@@ -152,6 +152,7 @@ router.get("/information", async (req, res) => {
       }
 
       places.push({
+        placeId: place.placeId,
         placeName: place.placeName,
         coverImg: place.coverImg[0] ? place.coverImg[0] : "",
         location: {

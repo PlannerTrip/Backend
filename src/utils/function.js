@@ -159,6 +159,7 @@ const getForecast = async (province, district, startDate, duration, res) => {
     return TMD_response;
   } catch (err) {
     console.log("forecast Error");
+    throw new Error(err.message);
     // console.log(err);
     // return res.status(400).json({ error: err });
   }
