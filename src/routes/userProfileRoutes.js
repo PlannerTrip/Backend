@@ -170,6 +170,7 @@ router.get("/bookmark", async (req, res) => {
 
       response.push({
         placeId: bookmark.placeId,
+        type: place.type,
         placeName: place.placeName,
         introduction: place.introduction,
         coverImg: place.coverImg[0] ? place.coverImg[0] : "",
