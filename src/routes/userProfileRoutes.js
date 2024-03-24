@@ -63,7 +63,7 @@ router.put("/information", upload.single("profileImg"), async (req, res) => {
     const profileImg = req.file;
     const userId = req.user.id;
     const user = await User.findOne({ id: userId });
-    const { username, email, gender } = req.body;
+    const { username, email } = req.body;
     if (profileImg) {
       const randomString = crypto.randomBytes(12).toString("hex");
       const fileName =
@@ -88,11 +88,13 @@ router.put("/information", upload.single("profileImg"), async (req, res) => {
       user.username = username;
     }
     if (email) {
+      const user = await User.findOne({ email: email });
+      if (user) {
+        return res.status(500).json("this email already use");
+      }
       user.email = email;
     }
-    if (gender) {
-      user.gender = gender;
-    }
+
     await user.save();
 
     return res.json("success change information");
@@ -179,6 +181,20 @@ router.get("/bookmark", async (req, res) => {
       });
     }
     return res.json(response);
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+router.get("/", async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const user = await User.findOne({ id: userId });
+    res.json({
+      username: user.username,
+      email: user.email,
+      profileUrl: user.profileUrl,
+    });
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }

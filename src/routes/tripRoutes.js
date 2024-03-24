@@ -32,6 +32,7 @@ const { getStorage, getDownloadURL } = require("firebase-admin/storage");
 const bucket = getStorage().bucket();
 
 const path = require("path");
+const axios = require("axios");
 
 // create trip
 router.post("/", async (req, res) => {
@@ -1126,6 +1127,43 @@ router.get("/myTrip", async (req, res) => {
     const response = await getTripInformation(trips);
 
     res.json(response);
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+router.get("/stop", async (req, res) => {
+  try {
+    const response = await axios.post(
+      `https://routes.googleapis.com/directions/v2:computeRoutes`,
+      {
+        origin: {
+          location: {
+            latLng: {
+              latitude: 18.805148,
+              longitude: 98.901021,
+            },
+          },
+        },
+        destination: {
+          location: {
+            latLng: {
+              latitude: 13.726444,
+              longitude: 100.537911,
+            },
+          },
+        },
+      },
+      {
+        headers: {
+          "Content-Type": "application/json",
+          "X-Goog-Api-Key": "AIzaSyDF0UVQ0Sxes5rHzwcoohPB0nV2kRGinAU",
+          "X-Goog-FieldMask":
+            "routes.duration,routes.distanceMeters,routes.polyline.encodedPolyline",
+        },
+      }
+    );
+    return res.json(response.data);
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }
