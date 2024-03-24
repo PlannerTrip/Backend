@@ -178,6 +178,7 @@ router.get("/information", async (req, res) => {
       places: places,
       tripIdReference: blog.tripIdReference,
       date: blog.date,
+      note: blog.note,
     };
     return res.json(response);
   } catch (err) {
