@@ -18,6 +18,7 @@ const {
   checkUserIdExists,
   getTrip,
   checkOwner,
+  getTripInformation,
 } = require("../utils/function.js");
 
 const upload = multer({
@@ -1114,7 +1115,20 @@ router.get("/userTripName", async (req, res) => {
   }
 });
 
+router.get("/myTrip", async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const trips = await Trip.find({
+      successCreate: true,
+      "member.userId": userId,
+    });
 
+    const response = await getTripInformation(trips);
 
+    res.json(response);
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
 
 module.exports = router;

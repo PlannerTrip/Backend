@@ -5,6 +5,8 @@ const express = require("express");
 const User = require("../models/User.js");
 const Report = require("../models/Report.js");
 const Trip = require("../models/Trip.js");
+const Blog = require("../models/Blog.js");
+const Bookmark = require("../models/Bookmark.js");
 const Place = require("../models/Place.js");
 
 const {
@@ -30,6 +32,7 @@ const crypto = require("crypto");
 const path = require("path");
 
 const { v4: uuidv4 } = require("uuid");
+const { blogGetInformation } = require("../utils/blogFunction.js");
 
 router.put("/password", async (req, res) => {
   try {
@@ -128,6 +131,53 @@ router.get("/tripCreate", async (req, res) => {
     const response = await getTripInformation(trips);
 
     res.json(response);
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+router.get("/likeBlog", async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const blogs = await Blog.find({ "likes.userId": userId });
+    console.log(blogs);
+    const response = await blogGetInformation(blogs);
+    return res.json(response);
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+router.get("/blogCreate", async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const blogs = await Blog.find({ createBy: userId });
+    const response = await blogGetInformation(blogs);
+    return res.json(response);
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+router.get("/bookmark", async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const bookmarks = await Bookmark.find({ userId: userId });
+    const response = [];
+
+    for (bookmark of bookmarks) {
+      const place = await Place.findOne({ placeId: bookmark.placeId });
+
+      response.push({
+        placeId: bookmark.placeId,
+        placeName: place.placeName,
+        introduction: place.introduction,
+        coverImg: place.coverImg[0] ? place.coverImg[0] : "",
+        locationA: place.location,
+        tag: place.tag,
+      });
+    }
+    return res.json(response);
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }
