@@ -4,8 +4,15 @@ const express = require("express");
 
 const User = require("../models/User.js");
 const Report = require("../models/Report.js");
+const Trip = require("../models/Trip.js");
+const Place = require("../models/Place.js");
 
-const { hashPassword, comparePasswords } = require("../utils/function.js");
+const {
+  hashPassword,
+  comparePasswords,
+  getUserInformation,
+  getTripInformation,
+} = require("../utils/function.js");
 
 const router = express.Router();
 
@@ -107,6 +114,20 @@ router.post("/report", async (req, res) => {
     });
 
     return res.json("report sent");
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+router.get("/tripCreate", async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    const trips = await Trip.find({ createBy: userId, successCreate: true });
+
+    const response = await getTripInformation(trips);
+
+    res.json(response);
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }

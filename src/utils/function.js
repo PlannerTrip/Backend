@@ -216,6 +216,46 @@ const compareTime = (a, b) => {
   }
 };
 
+const getTripInformation = async (trips) => {
+  try {
+    const response = [];
+
+    for (trip of trips) {
+      const users = await getUserInformation(
+        trip.member.map((member) => member.userId)
+      );
+
+      const province = {};
+
+      for (placeId of trip.place.map((place) => place.placeId)) {
+        const place = await Place.findOne({ placeId });
+        if (province[place.location.province]) {
+          province[place.location.province] =
+            province[place.location.province] + 1;
+        } else {
+          province[place.location.province] = 1;
+        }
+      }
+
+      const provinceArray = Object.entries(province)
+        .sort((a, b) => b[1] - a[1])
+        .map((item) => item[0]);
+
+      response.push({
+        name: trip.name,
+        coverImg: trip.coverImg.url,
+        date: trip.date,
+        tripId: trip.tripId,
+        member: users,
+        province: provinceArray.slice(0, 3),
+      });
+    }
+    return response;
+  } catch (err) {
+    throw new Error(err.message);
+  }
+};
+
 module.exports = {
   hashPassword,
   comparePasswords,
@@ -227,4 +267,5 @@ module.exports = {
   getTrip,
   checkOwner,
   compareTime,
+  getTripInformation,
 };
