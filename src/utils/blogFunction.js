@@ -24,6 +24,7 @@ const blogGetInformation = async (blogs, userId) => {
         .map((item) => item[0]);
 
       response.push({
+        blogId: blog.blogId,
         name: blog.name,
         img: blog.img[0] ? blog.img[0].url : "",
         totalLike: blog.likes.length,
