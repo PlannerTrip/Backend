@@ -830,6 +830,16 @@ router.put("/createTrip", async (req, res) => {
     const trip = await getTrip(tripId);
     checkUserIdExists(trip, userId, tripId);
     checkOwner(userId, trip.createBy);
+    let first = true;
+    for (const plan of trip.plan) {
+      const sortPlan = plan.place.sort((a, b) =>
+        compareTime(a.startTime, b.startTime)
+      );
+      if (first && sortPlan.length !== 0) {
+        first = false;
+        trip.currentPlace = sortPlan[0].placePlanId;
+      }
+    }
 
     trip.successCreate = true;
     trip.currentStage = "finish";
@@ -841,7 +851,7 @@ router.put("/createTrip", async (req, res) => {
 
     return res.json("success create trip");
   } catch (err) {
-    return res.status(500).json({ error: `error ${error}` });
+    return res.status(500).json({ error: `error ${err.message}` });
   }
 });
 
@@ -1049,6 +1059,7 @@ router.get("/information", async (req, res) => {
             placeId: place.placePlanId,
             startTime: place.startTime,
             endTime: place.endTime,
+            status: place.status,
             placeName: placeInformation.placeName,
             covetImg: placeInformation.coverImg,
             location: placeInformation.location,
@@ -1074,6 +1085,7 @@ router.get("/information", async (req, res) => {
           name: trip.name,
           note: trip.note,
           coverImg: trip.coverImg.url,
+          currentPlace: trip.currentPlace,
         },
         plan: plan,
         owner: owner,
@@ -1138,8 +1150,45 @@ router.get("/myTrip", async (req, res) => {
   }
 });
 
+router.put("/checkIn", async (req, res) => {
+  try {
+    const { tripId, placeId } = req.body;
+    const userId = req.user.id;
+    const trip = await getTrip(tripId);
+    const allSortPlan = [];
+    for (const plan of trip.plan) {
+      const sortPlan = plan.place.sort((a, b) =>
+        compareTime(a.startTime, b.startTime)
+      );
+      allSortPlan.push(sortPlan);
+    }
+    const next = false;
+    for (const dailyPlan of allSortPlan) {
+      for (const plan of dailyPlan) {
+        if (plan.placePlanId === trip.currentPlace) {
+          next = true;
+        }
+        if (next) {
+          trip.currentPlace = plan.placeId;
+        }
+      }
+
+      // check in for all member
+      // sent socket
+      await trip.save();
+      if (!next) {
+        res.json("all done");
+      }
+      res.json("success check In");
+    }
+  } catch (err) {
+    return res.status(500).json(err.message);
+  }
+});
+
 router.get("/stop", async (req, res) => {
   try {
+    const userId = req.user.id;
     const { tripId, day } = req.query;
 
     const trip = await Trip.findOne({ tripId });
@@ -1209,50 +1258,71 @@ router.get("/stop", async (req, res) => {
 
     const data = result.data;
 
-    const decode = polyline.decode(data.routes[0].polyline.encodedPolyline);
+    if (data && data.routes[0]) {
+      const decode = polyline.decode(data.routes[0].polyline.encodedPolyline);
 
-    const response = [];
-    for (let i = 0; i <= 10; i++) {
-      let index = Math.round(decode.length * i * 0.1);
-      if (index >= decode.length) {
-        index--;
-      }
+      let response = [];
+      for (let i = 0; i <= 10; i++) {
+        let index = Math.round(decode.length * i * 0.1);
+        if (index >= decode.length) {
+          index--;
+        }
 
-      // console.log(index);
-      // console.log(decode[index][0], decode[index][1]);
+        // console.log(index);
+        // console.log(decode[index][0], decode[index][1]);
 
-      const TAT_response = await getStopPlace(
-        `${decode[index][0]},${decode[index][1]}`
-      );
-      // add new place to database
-      for (const place of TAT_response) {
-        const placeInfo = await getPlaceInformation(
-          place.category_code,
-          place.place_id,
-          res
+        const TAT_response = await getStopPlace(
+          `${decode[index][0]},${decode[index][1]}`
         );
-        // console.log(placeInfo);
-        if (placeInfo.length !== 0) {
-          response.push({
-            placeId: placeInfo.placeId,
-            placeName: placeInfo.placeName,
-            coverImg:
-              placeInfo.coverImg && placeInfo.coverImg[0]
-                ? placeInfo.coverImg[0]
-                : "",
-            location: placeInfo.location,
-            latitude: placeInfo.latitude,
-            longitude: placeInfo.longitude,
-          });
+        // add new place to database
+        for (const place of TAT_response) {
+          const placeInfo = await getPlaceInformation(
+            place.category_code,
+            place.place_id,
+            res
+          );
+          // console.log(placeInfo);
+          if (placeInfo.length !== 0) {
+            response.push({
+              placeId: placeInfo.placeId,
+              placeName: placeInfo.placeName,
+              coverImg:
+                placeInfo.coverImg && placeInfo.coverImg[0]
+                  ? placeInfo.coverImg[0]
+                  : "",
+              location: placeInfo.location,
+              latitude: placeInfo.latitude,
+              longitude: placeInfo.longitude,
+            });
+          }
         }
       }
-    }
 
-    return res.json({
-      places: response,
-      planPlace: allPointInfo,
-      polyLine: data.routes[0].polyline.encodedPolyline,
-    });
+      response = response.map((place) => {
+        if (trip.place.some((item) => item.placeId === place.placeId)) {
+          let alreadyAdd = false;
+          for (item of trip.place) {
+            if (
+              item.placeId === place.placeId &&
+              item.selectBy.includes(userId)
+            ) {
+              alreadyAdd = true;
+            }
+          }
+          return { ...place, alreadyAdd: alreadyAdd };
+        } else {
+          return { ...place, alreadyAdd: false };
+        }
+      });
+
+      return res.json({
+        places: response.filter((item) => !item.alreadyAdd),
+        planPlace: allPointInfo,
+        polyLine: data.routes[0].polyline.encodedPolyline,
+        owner: trip.createBy === userId,
+      });
+    }
+    return res.json("no data");
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }

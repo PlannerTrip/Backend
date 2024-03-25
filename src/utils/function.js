@@ -212,6 +212,11 @@ const checkOwner = (id, createBy) => {
 };
 
 const compareTime = (a, b) => {
+  if (a === "") {
+    return 1; // Empty strings come after non-empty strings
+  } else if (b === "") {
+    return -1; // Non-empty strings come before empty strings
+  }
   const [hourA, minuteA] = a.split(":").map(Number);
   const [hourB, minuteB] = b.split(":").map(Number);
 
@@ -276,7 +281,7 @@ const getStopPlace = async (geolocation) => {
         params: {
           geolocation: geolocation,
           keyword: "",
-          searchradius: 3000,
+          searchradius: 10000,
           numberofresult: 2,
         },
         headers: header,
