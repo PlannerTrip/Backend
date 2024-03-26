@@ -91,9 +91,11 @@ const getPlaceInformation = async (type, placeId, res) => {
         placeId: responseData.place_id,
         placeName: responseData.place_name,
         type: type,
-        coverImg: responseData.web_picture_urls,
+        coverImg: responseData.web_picture_urls
+          ? responseData.web_picture_urls
+          : [],
         introduction: responseData.place_information.introduction,
-        tag: tag,
+        tag: tag ? tag : [],
         latitude: responseData.latitude,
         longitude: responseData.longitude,
         contact: {

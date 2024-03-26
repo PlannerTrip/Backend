@@ -9,6 +9,7 @@ const { v4: uuidv4 } = require("uuid");
 const Trip = require("../models/Trip.js");
 const User = require("../models/User.js");
 const Place = require("../models/Place.js");
+const CheckIn = require("../models/CheckIn.js");
 
 const polyline = require("@mapbox/polyline");
 
@@ -1152,34 +1153,59 @@ router.get("/myTrip", async (req, res) => {
 
 router.put("/checkIn", async (req, res) => {
   try {
-    const { tripId, placeId } = req.body;
+    const { tripId, placeId, latitude, longitude } = req.body;
     const userId = req.user.id;
     const trip = await getTrip(tripId);
     const allSortPlan = [];
+
+    const place = await Place.findOne({ placeId: placeId });
+    const distance = distanceTwoPoint(
+      place.latitude,
+      place.longitude,
+      latitude,
+      longitude
+    );
+
+
     for (const plan of trip.plan) {
       const sortPlan = plan.place.sort((a, b) =>
         compareTime(a.startTime, b.startTime)
       );
       allSortPlan.push(sortPlan);
     }
-    const next = false;
+    let next = false;
     for (const dailyPlan of allSortPlan) {
       for (const plan of dailyPlan) {
         if (plan.placePlanId === trip.currentPlace) {
           next = true;
         }
         if (next) {
-          trip.currentPlace = plan.placeId;
+          trip.currentPlace = plan.placePlanId;
         }
       }
 
       // check in for all member
-      // sent socket
-      await trip.save();
-      if (!next) {
-        res.json("all done");
+      for (const member of trip.member) {
+        const checkIn = await CheckIn.findOne({
+          userId: member.userId,
+          placeId: placeId,
+        });
+
+        if (!checkIn) {
+          await CheckIn.create({
+            placeId: placeId,
+            userId: member.userId,
+            province: place.location.province,
+          });
+        }
       }
-      res.json("success check In");
+
+      // sent socket
+      // await trip.save();
+      if (!next) {
+        return res.json("all done");
+      }
+      return res.json("success check In");
     }
   } catch (err) {
     return res.status(500).json(err.message);

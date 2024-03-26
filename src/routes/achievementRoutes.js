@@ -105,6 +105,7 @@ router.get("/place", async (req, res) => {
       const placeInfo = await Place.findOne({ placeId: place.placeId });
       response.push({
         placeId: placeInfo.placeId,
+        type: placeInfo.type,
         placeName: placeInfo.placeName,
         coverImg: placeInfo.coverImg[0] ? placeInfo.coverImg[0] : "",
         district: placeInfo.location.district,
