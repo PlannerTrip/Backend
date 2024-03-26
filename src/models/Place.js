@@ -5,9 +5,9 @@ const PlaceSchema = new Schema({
   placeId: String,
   placeName: String,
   type: String,
-  coverImg: { type: [String], default: null },
+  coverImg: { type: [String], default: [] },
   introduction: String,
-  tag: { type: [String], default: null },
+  tag: { type: [String], default: [] },
   latitude: Number,
   longitude: Number,
   contact: {

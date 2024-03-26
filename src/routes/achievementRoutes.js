@@ -88,4 +88,43 @@ router.get("/map", async (req, res) => {
   }
 });
 
+router.get("/place", async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    const { province } = req.query;
+
+    if (!allProvince.includes(province)) {
+      return res.status(404).json({ error: "wrong province " });
+    }
+
+    const checkInPlace = await CheckIn.find({ userId, province });
+
+    const response = [];
+    for (const place of checkInPlace) {
+      const placeInfo = await Place.findOne({ placeId: place.placeId });
+      response.push({
+        placeId: placeInfo.placeId,
+        placeName: placeInfo.placeName,
+        coverImg: placeInfo.coverImg[0] ? placeInfo.coverImg[0] : "",
+        district: placeInfo.location.district,
+        checkInTime: place.timestamp,
+      });
+    }
+
+    return res.json(response);
+  } catch (err) {
+    return res.status(500).json(err.message);
+  }
+});
+
+// router.get("/update", async (req, res) => {
+//   try {
+//     await Place.updateMany({ coverImg: null }, { $set: { coverImg: [] } });
+//     res.json("done");
+//   } catch (err) {
+//     res.status(500).json(err.messages);
+//   }
+// });
+
 module.exports = router;
