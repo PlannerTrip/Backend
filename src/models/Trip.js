@@ -49,11 +49,12 @@ const TripSchema = new Schema({
     },
   ],
   inviteLink: String,
-  // invitation placeSelect planSelect tripSummary stopSelect-{day} finish
+  // invitation placeSelect planSelect tripSummary stopSelect-{day} finish delete
   currentStage: { type: String, default: "invitation" },
   currentPlace: { type: String, default: "" },
   successCreate: { type: Boolean, default: false },
   coverImg: { url: { type: String, default: "" }, fileName: String },
+  prevPlaceStatus: { type: String, default: "normal" },
 });
 
 module.exports = mongoose.model("Trip", TripSchema);

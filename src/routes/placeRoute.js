@@ -256,7 +256,13 @@ router.get("/recommend", async (req, res) => {
     const { tripId } = req.query;
     const userId = req.user.id;
 
-    const placeIdList = ["P08000001", "P02000001", "P03000001", "P08000003"];
+    const place = await CheckIn.aggregate([
+      { $group: { _id: "$placeId" } },
+      { $sort: { _id: 1 } },
+      { $limit: 20 },
+    ]);
+
+    const placeIdList = place.map((id) => id._id);
     const trip = await Trip.findOne({ tripId: tripId });
 
     if (!trip) {
@@ -372,6 +378,76 @@ router.post("/checkInTest", async (req, res) => {
     return res.json({ message: "Success checkIn" });
   } catch (error) {
     return res.status(400).json({ error: error });
+  }
+});
+
+router.get("/search", async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { input, tripId } = req.query;
+
+    const header = {
+      "Accept-Language": "th",
+      "Content-Type": "text/json",
+      Authorization: process.env.TAT_KEY,
+    };
+    const TAT_response = await axios(
+      `https://tatapi.tourismthailand.org/tatapi/v5/places/search`,
+      {
+        params: {
+          location: "13.6904831,100.5226014",
+          keyword: input,
+          numberofresult: 10,
+        },
+        headers: header,
+      }
+    );
+    // add new place to database
+    for (const place of TAT_response.data.result) {
+      await getPlaceInformation(place.category_code, place.place_id, res);
+    }
+
+    const placeIdList = TAT_response.data.result.map(
+      (information) => information.place_id
+    );
+    const trip = await Trip.findOne({ tripId: tripId });
+
+    if (!trip) {
+      return res
+        .status(404)
+        .json({ error: `No trip found for tripId: ${tripId}` });
+    }
+    const places = [];
+
+    for (const placeId of placeIdList) {
+      const place = await Place.findOne({ placeId: placeId });
+      // get forecast
+      if (place) {
+        const TMD_response = await getForecast(
+          place.location.province,
+          place.location.district,
+          trip.date.start,
+          5,
+          res
+        );
+
+        places.push({
+          ...place.toObject(),
+          forecasts:
+            TMD_response.length !== 0
+              ? TMD_response.data.WeatherForecasts[0].forecasts
+              : [],
+          alreadyAdd: trip.place.some(
+            (placeInTrip) =>
+              placeInTrip.placeId === place.placeId &&
+              placeInTrip.selectBy.some((member) => member === userId)
+          ),
+        });
+      }
+    }
+    return res.json(places);
+  } catch (err) {
+    return res.json([]);
   }
 });
 

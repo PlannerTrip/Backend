@@ -296,6 +296,18 @@ const getStopPlace = async (geolocation) => {
   }
 };
 
+const updateStatusInPlan = (plan, currentPlace, status) => {
+  return plan.map((dailyPlan) => {
+    dailyPlan.place.map((place) => {
+      if (place.placePlanId === currentPlace) {
+        place.status = status;
+      }
+      return place;
+    });
+    return dailyPlan;
+  });
+};
+
 module.exports = {
   hashPassword,
   comparePasswords,
@@ -309,4 +321,5 @@ module.exports = {
   compareTime,
   getTripInformation,
   getStopPlace,
+  updateStatusInPlan,
 };

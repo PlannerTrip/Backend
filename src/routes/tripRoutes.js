@@ -26,6 +26,7 @@ const {
 
   getStopPlace,
   compareTime,
+  updateStatusInPlan,
 } = require("../utils/function.js");
 
 const upload = multer({
@@ -1072,7 +1073,7 @@ router.get("/information", async (req, res) => {
         // get activity
 
         plan.push({
-          places: places,
+          places: places.sort((a, b) => compareTime(a.startTime, b.startTime)),
           day: dailyPlan.day,
           date: dailyPlan.date,
           activity: dailyPlan.activity,
@@ -1087,6 +1088,7 @@ router.get("/information", async (req, res) => {
           note: trip.note,
           coverImg: trip.coverImg.url,
           currentPlace: trip.currentPlace,
+          prevPlaceStatus: trip.prevPlaceStatus,
         },
         plan: plan,
         owner: owner,
@@ -1106,7 +1108,7 @@ router.get("/userTripName", async (req, res) => {
 
     const result = [];
 
-    for (const trip of trips) {
+    for (const trip of trips.filter((trip) => trip.currentStage !== "delete")) {
       const places = [];
       for (const item of trip.place) {
         const place = await Place.findOne({ placeId: item.placeId });
@@ -1143,7 +1145,9 @@ router.get("/myTrip", async (req, res) => {
       "member.userId": userId,
     });
 
-    const response = await getTripInformation(trips);
+    const response = await getTripInformation(
+      trips.filter((trip) => trip.currentStage !== "delete")
+    );
 
     res.json(response);
   } catch (err) {
@@ -1153,10 +1157,19 @@ router.get("/myTrip", async (req, res) => {
 
 router.put("/checkIn", async (req, res) => {
   try {
-    const { tripId, placeId, latitude, longitude } = req.body;
+    const { tripId, latitude, longitude, nextPlace } = req.body;
     const userId = req.user.id;
     const trip = await getTrip(tripId);
     const allSortPlan = [];
+
+    const placeId = trip.plan.reduce((result, current) => {
+      for (const place of current.place) {
+        if (place.placePlanId === trip.currentPlace) {
+          return place.placeId;
+        }
+      }
+      return result;
+    }, "");
 
     const place = await Place.findOne({ placeId: placeId });
     const distance = distanceTwoPoint(
@@ -1166,49 +1179,103 @@ router.put("/checkIn", async (req, res) => {
       longitude
     );
 
-
-    for (const plan of trip.plan) {
-      const sortPlan = plan.place.sort((a, b) =>
-        compareTime(a.startTime, b.startTime)
-      );
-      allSortPlan.push(sortPlan);
+    if (distance > 3) {
+      return res.status(404).json({
+        error: `The distance (${distance.toFixed(
+          2
+        )} km) exceeds the allowed threshold. `,
+      });
     }
-    let next = false;
-    for (const dailyPlan of allSortPlan) {
-      for (const plan of dailyPlan) {
-        if (plan.placePlanId === trip.currentPlace) {
-          next = true;
-        }
-        if (next) {
-          trip.currentPlace = plan.placePlanId;
-        }
-      }
+    trip.prevPlaceStatus = "checkIn";
 
-      // check in for all member
-      for (const member of trip.member) {
-        const checkIn = await CheckIn.findOne({
-          userId: member.userId,
+    trip.plan = updateStatusInPlan(trip.plan, trip.currentPlace, "checkIn");
+
+    // check in for all member
+    for (const member of trip.member) {
+      const checkIn = await CheckIn.findOne({
+        userId: member.userId,
+        placeId: placeId,
+      });
+
+      if (!checkIn) {
+        await CheckIn.create({
           placeId: placeId,
+          userId: member.userId,
+          province: place.location.province,
         });
-
-        if (!checkIn) {
-          await CheckIn.create({
-            placeId: placeId,
-            userId: member.userId,
-            province: place.location.province,
-          });
-        }
       }
-
-      // sent socket
-      // await trip.save();
-      if (!next) {
-        return res.json("all done");
-      }
-      return res.json("success check In");
     }
+
+    // sent socket
+    if (nextPlace === "last") {
+      trip.currentPlace = "";
+      trip.prevPlaceStatus = "normal";
+      io.to(tripId).emit("tripDone", "done");
+      await trip.save();
+      return res.json("all done");
+    }
+
+    trip.currentPlace = nextPlace;
+    await trip.save();
+
+    io.to(tripId).emit("updateCurrentPlace", {
+      currentPlace: trip.currentPlace,
+      type: "checkIn",
+    });
+    return res.json("success checkIn");
   } catch (err) {
     return res.status(500).json(err.message);
+  }
+});
+
+router.put("/skip", async (req, res) => {
+  try {
+    const { tripId, nextPlace } = req.body;
+    const trip = await getTrip(tripId);
+
+    trip.prevPlaceStatus = "skip";
+    trip.plan = updateStatusInPlan(trip.plan, trip.currentPlace, "skip");
+
+    if (nextPlace === "last") {
+      trip.currentPlace = "";
+      trip.prevPlaceStatus = "normal";
+      io.to(tripId).emit("tripDone", "done");
+      await trip.save();
+      return res.json("all done");
+    }
+    trip.currentPlace = nextPlace;
+    await trip.save();
+
+    // sent socket
+    io.to(tripId).emit("updateCurrentPlace", {
+      currentPlace: trip.currentPlace,
+      type: "skip",
+    });
+    return res.json("success skip");
+  } catch (err) {
+    return res.status(500).json(err.message);
+  }
+});
+
+router.put("/undo", async (req, res) => {
+  try {
+    const { tripId, prevPlace } = req.body;
+
+    const trip = await getTrip(tripId);
+
+    trip.currentPlace = prevPlace;
+    trip.prevPlaceStatus = "normal";
+
+    await trip.save();
+
+    // sent socket
+    io.to(tripId).emit("updateCurrentPlace", {
+      currentPlace: trip.currentPlace,
+      type: "undo",
+    });
+    return res.json("success skip");
+  } catch (err) {
+    return res.status(500).json({ err: err.message });
   }
 });
 
