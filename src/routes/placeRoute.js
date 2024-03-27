@@ -253,7 +253,7 @@ router.get("/bookmark", async (req, res) => {
 // get recommend place
 router.get("/recommend", async (req, res) => {
   try {
-    const { tripId } = req.query;
+    const { tripId, onlyId } = req.query;
     const userId = req.user.id;
 
     const place = await CheckIn.aggregate([
@@ -263,6 +263,9 @@ router.get("/recommend", async (req, res) => {
     ]);
 
     const placeIdList = place.map((id) => id._id);
+    if (onlyId) {
+      return res.json(placeIdList);
+    }
     const trip = await Trip.findOne({ tripId: tripId });
 
     if (!trip) {
@@ -384,7 +387,7 @@ router.post("/checkInTest", async (req, res) => {
 router.get("/search", async (req, res) => {
   try {
     const userId = req.user.id;
-    const { input, tripId } = req.query;
+    const { input, tripId, onlyId } = req.query;
 
     const header = {
       "Accept-Language": "th",
@@ -410,6 +413,10 @@ router.get("/search", async (req, res) => {
     const placeIdList = TAT_response.data.result.map(
       (information) => information.place_id
     );
+    if (onlyId) {
+      return res.json(placeIdList);
+    }
+
     const trip = await Trip.findOne({ tripId: tripId });
 
     if (!trip) {
