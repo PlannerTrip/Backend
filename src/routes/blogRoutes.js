@@ -204,7 +204,7 @@ router.post("/copyTrip", async (req, res) => {
     }
 
     const place = blog.place.map((place) => ({
-      placeId: place.placeId,
+      placeId: place,
       selectBy: [userId],
     }));
 
