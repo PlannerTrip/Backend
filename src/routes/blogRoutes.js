@@ -190,20 +190,20 @@ router.get("/information", async (req, res) => {
 
 router.post("/copyTrip", async (req, res) => {
   try {
-    const { tripId } = req.body;
+    const { blogId } = req.body;
     const userId = req.user.id;
 
-    if (!tripId) {
+    if (!blogId) {
       return res.status(404).json("tripId not found");
     }
 
-    const trip = await Trip.findOne({ tripId });
+    const blog = await Blog.findOne({ blogId });
 
-    if (!trip) {
+    if (!blog) {
       return res.status(404).json("trip not found");
     }
 
-    const place = trip.place.map((place) => ({
+    const place = blog.place.map((place) => ({
       placeId: place.placeId,
       selectBy: [userId],
     }));
