@@ -135,7 +135,7 @@ router.get("/information", async (req, res) => {
       return res.status(404).json("blog not found");
     }
 
-    const userInformation = await User.findOne({ id: userId });
+    const userInformation = await User.findOne({ id: blog.createBy });
 
     const province = {};
 
